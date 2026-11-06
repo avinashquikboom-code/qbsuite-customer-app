@@ -1,3 +1,5 @@
+import '../icons/remix_icon.dart';
+
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
@@ -61,6 +63,12 @@ abstract final class AppTheme {
       ),
     );
     return ThemeData(
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (_) => const RemixIcon(AppIcon.back),
+        closeButtonIconBuilder: (_) => const RemixIcon(AppIcon.close),
+        drawerButtonIconBuilder: (_) => const RemixIcon(AppIcon.menu),
+        endDrawerButtonIconBuilder: (_) => const RemixIcon(AppIcon.menu),
+      ),
       useMaterial3: true,
       colorScheme: scheme,
       primaryColor: AppColors.primary,

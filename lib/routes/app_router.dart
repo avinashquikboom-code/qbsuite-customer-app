@@ -22,11 +22,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final atLogin = route.matchedLocation == '/login';
       if (auth.isLoading) return null; // Gate below blocks protected content.
       final signedIn = auth.asData?.value != null;
-      if (!signedIn && !atLogin)
+      if (!signedIn && !atLogin) {
         return Uri(
           path: '/login',
           queryParameters: {'from': route.uri.toString()},
         ).toString();
+      }
       if (signedIn && atLogin) {
         final from = route.uri.queryParameters['from'];
         final uri = from == null ? null : Uri.tryParse(from);

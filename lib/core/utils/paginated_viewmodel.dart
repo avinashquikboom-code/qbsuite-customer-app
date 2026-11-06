@@ -50,8 +50,9 @@ abstract class PaginatedViewModel<T> extends AsyncNotifier<PagedState<T>> {
     final current = state.asData?.value;
     if (_moreGeneration == _generation ||
         current == null ||
-        current.nextCursor == null)
+        current.nextCursor == null) {
       return;
+    }
     _moreGeneration = _generation;
     final generation = _generation;
     state = AsyncData(

@@ -34,8 +34,9 @@ final dioProvider = Provider<Dio>((ref) {
           return;
         }
         final token = store.current?.accessToken;
-        if (options.extra['public'] != true && token != null)
+        if (options.extra['public'] != true && token != null) {
           options.headers['Authorization'] = 'Bearer $token';
+        }
         // Do not log URLs, bodies, credentials, user data, or headers.
         if (kDebugMode) debugPrint('[HTTP] ${options.method} request');
         handler.next(options);

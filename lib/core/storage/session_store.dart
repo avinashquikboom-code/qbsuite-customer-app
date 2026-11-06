@@ -21,7 +21,10 @@ class SessionStore {
   Session? current;
   Future<Session?> restore() async {
     final raw = await _storage.read(key: _key);
-    if (raw == null) return null;
+    if (raw == null) {
+      current = null;
+      return null;
+    }
     try {
       return current = Session.fromJson(
         Map<String, dynamic>.from(jsonDecode(raw) as Map),

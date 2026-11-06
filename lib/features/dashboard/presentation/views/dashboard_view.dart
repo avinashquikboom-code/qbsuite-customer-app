@@ -47,8 +47,9 @@ class DashboardView extends ConsumerWidget {
                   final visible = items
                       .where((item) => item.title.toLowerCase().contains(query))
                       .toList();
-                  if (visible.isEmpty)
+                  if (visible.isEmpty) {
                     return const AppEmptyState(title: 'No matching features');
+                  }
                   return LayoutBuilder(
                     builder: (context, constraints) {
                       final columns = constraints.maxWidth >= 900
