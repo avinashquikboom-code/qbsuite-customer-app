@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qb_customer/app/app.dart';
 import 'package:qb_customer/core/config/app_config.dart';
+import 'package:qb_customer/core/network/dio_client.dart';
 import 'package:qb_customer/core/storage/session_store.dart';
 import 'package:qb_customer/core/utils/paginated_viewmodel.dart';
 import 'package:qb_customer/features/auth/data/auth_service.dart';
@@ -47,7 +48,8 @@ class FakeAuthRepository implements AuthRepository {
 }
 
 class StubAdapter implements HttpClientAdapter {
-  StubAdapter(this.body);
+  StubAdapter(this.body, {this.status = 200});
+  final int status;
   final Object body;
   RequestOptions? request;
   @override
@@ -59,7 +61,7 @@ class StubAdapter implements HttpClientAdapter {
     request = options;
     return ResponseBody.fromString(
       jsonEncode(body),
-      200,
+      status,
       headers: {
         Headers.contentTypeHeader: ['application/json'],
       },
@@ -108,6 +110,26 @@ void main() {
     addTearDown(second.dispose);
     expect((await second.restore())?.email, session.email);
     await second.clear();
+    expect(await store.restore(), isNull);
+  });
+
+  test('HTTP credentials stay on the API origin and 401 clears the session', () async {
+    final store = SessionStore(const FlutterSecureStorage());
+    addTearDown(store.dispose);
+    await store.save(Session(accessToken: 'test-token', email: 'test@example.com', role: AppConfig.allowedRoles.first));
+    final dio = createApiDio(store: store, baseUrl: 'https://api.example/api/v1');
+    addTearDown(() => dio.close(force: true));
+    final adapter = StubAdapter({'ok': true});
+    dio.httpClientAdapter = adapter;
+    await dio.get<Object?>('/profile');
+    expect(adapter.request?.headers['Authorization'], 'Bearer test-token');
+    await dio.post<Object?>('/login', options: Options(extra: {'public': true}));
+    expect(adapter.request?.headers['Authorization'], isNull);
+    await expectLater(dio.get<Object?>('https://other.example/profile'), throwsA(isA<DioException>()));
+    expect(store.current, isNotNull);
+    dio.httpClientAdapter = StubAdapter({}, status: 401);
+    await expectLater(dio.get<Object?>('/profile'), throwsA(isA<DioException>()));
+    expect(store.current, isNull);
     expect(await store.restore(), isNull);
   });
 

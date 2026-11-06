@@ -19,6 +19,7 @@ class SessionStore {
   static const _key = 'qb_session_v1';
   Stream<Session?> get changes => _events.stream;
   Session? current;
+  int version = 0;
   Future<Session?> restore() async {
     final raw = await _storage.read(key: _key);
     if (raw == null) {
@@ -40,12 +41,14 @@ class SessionStore {
 
   Future<void> save(Session session) async {
     await _storage.write(key: _key, value: jsonEncode(session.toJson()));
+    version++;
     current = session;
     _events.add(session);
   }
 
   Future<void> clear() async {
     // Clear memory even if the keychain fails; surface persistence failures.
+    version++;
     current = null;
     _events.add(null);
     await _storage.delete(key: _key);
