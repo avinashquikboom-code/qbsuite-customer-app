@@ -9,10 +9,11 @@ abstract final class Environment {
   );
   static const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
   static AppEnvironment get current => AppEnvironment.values.byName(name);
-  static void validate({bool requireUrl = false}) {
+  static void validate({bool requireUrl = false, String? baseUrl}) {
     final env = current;
-    if (apiBaseUrl.isEmpty && !requireUrl) return;
-    final uri = Uri.tryParse(apiBaseUrl);
+    final value = baseUrl ?? apiBaseUrl;
+    if (value.isEmpty && !requireUrl) return;
+    final uri = Uri.tryParse(value);
     if (uri == null ||
         !uri.hasAuthority ||
         !['http', 'https'].contains(uri.scheme) ||

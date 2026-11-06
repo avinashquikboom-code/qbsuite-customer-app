@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../../features/auth/domain/session.dart';
+import '../../data/models/session.dart';
 
 final sessionStoreProvider = Provider<SessionStore>((ref) {
   final store = SessionStore(const FlutterSecureStorage());
