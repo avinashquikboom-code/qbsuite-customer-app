@@ -43,8 +43,9 @@ abstract final class AppTheme {
       backgroundColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.disabled)) return AppColors.border;
         if (states.contains(WidgetState.pressed) ||
-            states.contains(WidgetState.hovered))
+            states.contains(WidgetState.hovered)) {
           return AppColors.darkPrimary;
+        }
         return AppColors.primary;
       }),
       foregroundColor: WidgetStateProperty.resolveWith(

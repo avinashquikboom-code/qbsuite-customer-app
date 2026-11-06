@@ -15,6 +15,7 @@ class ApiAuthRepository implements AuthRepository {
     await _store.save(session);
     return session;
   }
+
   @override
   Future<void> signOut() => _store.clear();
 }
