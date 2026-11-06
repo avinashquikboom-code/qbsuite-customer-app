@@ -89,6 +89,42 @@ class AppLoader extends StatelessWidget {
       const Center(child: CircularProgressIndicator(semanticsLabel: 'Loading'));
 }
 
+class AppLogo extends StatelessWidget {
+  const AppLogo({super.key, this.width = 240});
+  final double width;
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    'assets/images/app_logo_brand.png',
+    width: width,
+    fit: BoxFit.contain,
+    semanticLabel: 'QB Suite logo',
+  );
+}
+
+class AppSplashScreen extends StatelessWidget {
+  const AppSplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppLogo(),
+            const SizedBox(height: 24),
+            const SizedBox.square(
+              dimension: 24,
+              child: CircularProgressIndicator(semanticsLabel: 'Loading'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class AppErrorWidget extends StatelessWidget {
   const AppErrorWidget({super.key, required this.message, this.onRetry});
   final String message;

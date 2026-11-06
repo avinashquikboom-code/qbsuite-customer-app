@@ -36,6 +36,8 @@ class _LoginViewState extends ConsumerState<LoginView> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const Center(child: AppLogo()),
+                    const SizedBox(height: 20),
                     Text(
                       AppConfig.title,
                       style: Theme.of(context).textTheme.headlineSmall,

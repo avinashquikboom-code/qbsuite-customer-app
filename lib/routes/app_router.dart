@@ -94,7 +94,7 @@ class _SessionGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authViewModelProvider);
-    if (auth.isLoading) return const Scaffold(body: AppLoader());
+    if (auth.isLoading) return const AppSplashScreen();
     if (auth.asData?.value == null) return const Scaffold(body: AppLoader());
     return child;
   }
