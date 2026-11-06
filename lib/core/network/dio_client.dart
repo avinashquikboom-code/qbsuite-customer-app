@@ -42,8 +42,14 @@ Dio createApiDio({required SessionStore store, required String baseUrl}) {
         }
         // API credentials must never be forwarded to another origin.
         if (options.uri.origin != Uri.parse(baseUrl).origin) {
-          handler.reject(DioException(requestOptions: options,
-            error: const AppFailure('The request must use the configured API host.')));
+          handler.reject(
+            DioException(
+              requestOptions: options,
+              error: const AppFailure(
+                'The request must use the configured API host.',
+              ),
+            ),
+          );
           return;
         }
         options.headers.remove('Authorization');

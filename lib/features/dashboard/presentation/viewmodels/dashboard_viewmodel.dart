@@ -5,4 +5,3 @@ class DashboardQuery extends Notifier<String> {
   String build() => '';
   void update(String value) => state = value;
 }
-

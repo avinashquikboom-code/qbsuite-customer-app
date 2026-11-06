@@ -113,25 +113,46 @@ void main() {
     expect(await store.restore(), isNull);
   });
 
-  test('HTTP credentials stay on the API origin and 401 clears the session', () async {
-    final store = SessionStore(const FlutterSecureStorage());
-    addTearDown(store.dispose);
-    await store.save(Session(accessToken: 'test-token', email: 'test@example.com', role: AppConfig.allowedRoles.first));
-    final dio = createApiDio(store: store, baseUrl: 'https://api.example/api/v1');
-    addTearDown(() => dio.close(force: true));
-    final adapter = StubAdapter({'ok': true});
-    dio.httpClientAdapter = adapter;
-    await dio.get<Object?>('/profile');
-    expect(adapter.request?.headers['Authorization'], 'Bearer test-token');
-    await dio.post<Object?>('/login', options: Options(extra: {'public': true}));
-    expect(adapter.request?.headers['Authorization'], isNull);
-    await expectLater(dio.get<Object?>('https://other.example/profile'), throwsA(isA<DioException>()));
-    expect(store.current, isNotNull);
-    dio.httpClientAdapter = StubAdapter({}, status: 401);
-    await expectLater(dio.get<Object?>('/profile'), throwsA(isA<DioException>()));
-    expect(store.current, isNull);
-    expect(await store.restore(), isNull);
-  });
+  test(
+    'HTTP credentials stay on the API origin and 401 clears the session',
+    () async {
+      final store = SessionStore(const FlutterSecureStorage());
+      addTearDown(store.dispose);
+      await store.save(
+        Session(
+          accessToken: 'test-token',
+          email: 'test@example.com',
+          role: AppConfig.allowedRoles.first,
+        ),
+      );
+      final dio = createApiDio(
+        store: store,
+        baseUrl: 'https://api.example/api/v1',
+      );
+      addTearDown(() => dio.close(force: true));
+      final adapter = StubAdapter({'ok': true});
+      dio.httpClientAdapter = adapter;
+      await dio.get<Object?>('/profile');
+      expect(adapter.request?.headers['Authorization'], 'Bearer test-token');
+      await dio.post<Object?>(
+        '/login',
+        options: Options(extra: {'public': true}),
+      );
+      expect(adapter.request?.headers['Authorization'], isNull);
+      await expectLater(
+        dio.get<Object?>('https://other.example/profile'),
+        throwsA(isA<DioException>()),
+      );
+      expect(store.current, isNotNull);
+      dio.httpClientAdapter = StubAdapter({}, status: 401);
+      await expectLater(
+        dio.get<Object?>('/profile'),
+        throwsA(isA<DioException>()),
+      );
+      expect(store.current, isNull);
+      expect(await store.restore(), isNull);
+    },
+  );
 
   test('login validates and deduplicates concurrent submissions', () async {
     final repo = FakeAuthRepository();

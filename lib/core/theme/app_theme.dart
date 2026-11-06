@@ -8,6 +8,7 @@ import 'app_colors.dart';
 /// Register Inter 400/500/600/700 in the application's pubspec.yaml.
 /// UI icons must come from remixicon; do not use Icons.* glyphs.
 abstract final class AppTheme {
+  static ThemeData get lightTheme => light;
   static const buttonRadius = 8.0;
   static const controlPadding = EdgeInsets.symmetric(
     horizontal: 16,
