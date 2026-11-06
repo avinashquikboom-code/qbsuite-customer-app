@@ -58,8 +58,8 @@ void main() {
       const ProviderScope(child: MaterialApp(home: LoginView())),
     );
     await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Sign in'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(TextField), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 
@@ -78,8 +78,8 @@ void main() {
       ),
     );
     await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('Sign in'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(TextField), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 }
