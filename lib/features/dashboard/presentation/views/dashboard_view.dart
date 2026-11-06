@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/icons/remix_icon.dart';
 import '../../../../core/widgets/app_widgets.dart';
+import '../../../../core/widgets/responsive/responsive.dart';
 import '../../../../routes/route_names.dart';
 import '../providers/dashboard_providers.dart';
 
@@ -50,39 +51,26 @@ class DashboardView extends ConsumerWidget {
                   if (visible.isEmpty) {
                     return const AppEmptyState(title: 'No matching features');
                   }
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final columns = constraints.maxWidth >= 900
-                          ? 3
-                          : constraints.maxWidth >= 600
-                          ? 2
-                          : 1;
-                      final width =
-                          (constraints.maxWidth - (columns - 1) * 12) / columns;
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: visible
-                            .map(
-                              (feature) => SizedBox(
-                                width: width,
-                                child: AppCard(
-                                  child: ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: const RemixIcon(AppIcon.grid),
-                                    title: Text(feature.title),
-                                    trailing: const RemixIcon(AppIcon.next),
-                                    onTap: () => context.goNamed(
-                                      RouteNames.feature,
-                                      pathParameters: {'id': feature.id},
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      );
-                    },
+                  return ResponsiveGrid(
+                    minItemWidth: 280,
+                    children: [
+                      for (final feature in visible)
+                        AppCard(
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const RemixIcon(AppIcon.grid),
+                            title: Text(
+                              feature.title,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: const RemixIcon(AppIcon.next),
+                            onTap: () => context.goNamed(
+                              RouteNames.feature,
+                              pathParameters: {'id': feature.id},
+                            ),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),

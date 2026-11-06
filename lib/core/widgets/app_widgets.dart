@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../icons/remix_icon.dart';
+import 'responsive/responsive.dart';
 
 class AppButton extends StatelessWidget {
   const AppButton({
@@ -218,9 +219,9 @@ class AppBottomNavigation extends StatelessWidget {
   final int index;
   final ValueChanged<int> onSelected;
   @override
-  Widget build(BuildContext context) => NavigationBar(
-    selectedIndex: index,
-    onDestinationSelected: onSelected,
+  Widget build(BuildContext context) => ResponsiveBottomNavigation(
+    index: index,
+    onSelected: onSelected,
     destinations: const [
       NavigationDestination(icon: RemixIcon(AppIcon.home), label: 'Home'),
       NavigationDestination(
