@@ -11,12 +11,24 @@ import 'package:quickboom_crm_customer/roles/customer/models/lead_model.dart';
 import 'package:quickboom_crm_customer/roles/customer/viewmodels/leads_viewmodel.dart';
 import 'package:quickboom_crm_customer/roles/customer/viewmodels/lead_stages_viewmodel.dart';
 
+typedef ScheduleVisitManageVisitFn = Future<LeadModel?> Function(
+  String id, {
+  required String action,
+  String? purpose,
+  String? date,
+  String? time,
+  String? location,
+  String? notes,
+  dynamic employeeId,
+});
+
 /// Shows the modernized Schedule Field Visit bottom sheet.
 Future<LeadModel?> showScheduleVisitBottomSheet(
   BuildContext context, {
   required LeadModel lead,
   required WidgetRef ref,
   Function(LeadModel)? onVisitScheduled,
+  ScheduleVisitManageVisitFn? manageVisit,
 }) {
   final rbac = ref.read(permissionManagerProvider);
   final rawRole = (rbac.role ?? '').trim().toUpperCase();
@@ -48,6 +60,7 @@ Future<LeadModel?> showScheduleVisitBottomSheet(
     builder: (ctx) => ScheduleVisitBottomSheet(
       lead: lead,
       onVisitScheduled: onVisitScheduled,
+      manageVisit: manageVisit,
     ),
   );
 }
@@ -55,11 +68,13 @@ Future<LeadModel?> showScheduleVisitBottomSheet(
 class ScheduleVisitBottomSheet extends ConsumerStatefulWidget {
   final LeadModel lead;
   final Function(LeadModel)? onVisitScheduled;
+  final ScheduleVisitManageVisitFn? manageVisit;
 
   const ScheduleVisitBottomSheet({
     super.key,
     required this.lead,
     this.onVisitScheduled,
+    this.manageVisit,
   });
 
   @override
@@ -279,18 +294,27 @@ class _ScheduleVisitBottomSheetState
     final timeStr = _selectedTime.format(context);
 
     try {
-      final updated = await ref
-          .read(leadsProvider.notifier)
-          .manageVisit(
-            widget.lead.id,
-            action: 'SCHEDULE',
-            purpose: _purposeCtrl.text.trim(),
-            location: _locationCtrl.text.trim(),
-            date: dateStr,
-            time: timeStr,
-            notes: _notesCtrl.text.trim(),
-            employeeId: _selectedEmployeeId,
-          );
+      final updated = widget.manageVisit != null
+          ? await widget.manageVisit!(
+              widget.lead.id,
+              action: 'SCHEDULE',
+              purpose: _purposeCtrl.text.trim(),
+              location: _locationCtrl.text.trim(),
+              date: dateStr,
+              time: timeStr,
+              notes: _notesCtrl.text.trim(),
+              employeeId: _selectedEmployeeId,
+            )
+          : await ref.read(leadsProvider.notifier).manageVisit(
+              widget.lead.id,
+              action: 'SCHEDULE',
+              purpose: _purposeCtrl.text.trim(),
+              location: _locationCtrl.text.trim(),
+              date: dateStr,
+              time: timeStr,
+              notes: _notesCtrl.text.trim(),
+              employeeId: _selectedEmployeeId,
+            );
 
       if (!mounted) return;
       setState(() => _isSubmitting = false);

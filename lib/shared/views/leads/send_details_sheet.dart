@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,6 +19,9 @@ class SendDetailsSheet extends ConsumerStatefulWidget {
 }
 
 class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
+  static const _missingDocsHint =
+      'Upload missing PDFs in Admin: Settings → CRM → Send Details → Company Documents.';
+
   bool _loadingDocs = true;
   bool _isSending = false;
   List<Map<String, dynamic>> _documents = [];
@@ -43,6 +47,35 @@ class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
     super.dispose();
   }
 
+  bool _isDocUploaded(Map<String, dynamic> doc) {
+    if (doc['isUploaded'] == true || doc['uploadStatus'] == 'UPLOADED') return true;
+    final url = (doc['fileUrl'] as String?)?.trim() ?? '';
+    if (url.isEmpty) return false;
+    return !url.contains('storage.qbapp.online/documents/');
+  }
+
+  String? _extractApiErrorMessage(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final missing = data['missingDocuments'];
+        if (missing is List && missing.isNotEmpty) {
+          final names = missing
+              .map((m) => (m is Map ? m['title'] : m)?.toString())
+              .whereType<String>()
+              .where((s) => s.trim().isNotEmpty)
+              .join(', ');
+          final base = data['message']?.toString() ??
+              'Some selected company documents have not been uploaded.';
+          return names.isEmpty ? '$base $_missingDocsHint' : '$base Missing: $names. $_missingDocsHint';
+        }
+        final message = data['message'];
+        if (message is String && message.trim().isNotEmpty) return message;
+      }
+    }
+    return null;
+  }
+
   Future<void> _loadDocuments() async {
     try {
       final response = await ref.read(apiClientProvider).get('/mobile/send-details/documents');
@@ -55,7 +88,7 @@ class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
           _documents = parsed;
           for (final doc in parsed) {
             final id = (doc['id'] as num?)?.toInt();
-            if (id != null && (doc['isActive'] ?? true)) {
+            if (id != null && (doc['isActive'] ?? true) && _isDocUploaded(doc)) {
               _selectedDocIds.add(id);
             }
           }
@@ -82,6 +115,19 @@ class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
       return;
     }
 
+    final missingSelected = _documents.where((doc) {
+      final id = (doc['id'] as num?)?.toInt();
+      return id != null && _selectedDocIds.contains(id) && !_isDocUploaded(doc);
+    }).map((doc) => doc['title']?.toString() ?? 'Document').toList();
+
+    if (missingSelected.isNotEmpty) {
+      AppToast.error(
+        context,
+        'Some selected company documents have not been uploaded. Missing: ${missingSelected.join(', ')}. $_missingDocsHint',
+      );
+      return;
+    }
+
     setState(() => _isSending = true);
 
     try {
@@ -98,13 +144,32 @@ class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
       final raw = response.data;
       final data = raw is Map && raw['data'] is Map ? Map<String, dynamic>.from(raw['data'] as Map) : (raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{});
       final overall = data['overallStatus']?.toString().toUpperCase() ?? '';
-      final reason = [data['whatsappError'], data['emailError']].whereType<String>().where((item) => item.trim().isNotEmpty).join(' ');
+      final waStatus = data['whatsappStatus']?.toString().toUpperCase() ?? '';
+      final emStatus = data['emailStatus']?.toString().toUpperCase() ?? '';
+      String? waErr;
+      String? emErr;
+      if (waStatus != 'SENT') {
+        final nested = data['whatsappResult'];
+        waErr = (nested is Map ? nested['error'] : null)?.toString().trim();
+        waErr = waErr?.isNotEmpty == true ? waErr : data['whatsappError']?.toString().trim();
+        if (waErr != null && waErr.isEmpty) waErr = null;
+      }
+      if (emStatus != 'SENT') {
+        final nested = data['emailResult'];
+        emErr = (nested is Map ? nested['error'] : null)?.toString().trim();
+        emErr = emErr?.isNotEmpty == true ? emErr : data['emailError']?.toString().trim();
+        if (emErr != null && emErr.isEmpty) emErr = null;
+      }
+      final channelNotes = <String>[
+        if (waErr != null) 'WhatsApp: $waErr',
+        if (emErr != null) 'Email: $emErr',
+      ];
 
       if (mounted) {
         if (overall == 'FAILED') {
-          AppToast.error(context, reason.isEmpty ? 'The details package was not delivered.' : reason);
+          AppToast.error(context, channelNotes.isEmpty ? 'The details package was not delivered.' : channelNotes.join(' '));
         } else if (overall == 'PARTIALLY_COMPLETED' || overall == 'PARTIAL') {
-          AppToast.info(context, reason.isEmpty ? 'The details package was only partly delivered.' : reason);
+          AppToast.info(context, channelNotes.isEmpty ? 'The details package was only partly delivered.' : channelNotes.join(' '));
         } else {
           AppToast.success(context, 'Business details package sent successfully!');
         }
@@ -113,16 +178,18 @@ class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
       }
     } catch (e) {
       if (mounted) {
-        AppToast.error(context, 'Failed to dispatch Send Details: ${e.toString()}');
+        final parsed = _extractApiErrorMessage(e);
+        AppToast.error(context, parsed ?? 'Failed to dispatch Send Details: ${e.toString()}');
       }
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
   }
 
-  Future<void> _previewDoc(String? url) async {
-    if (url == null || url.isEmpty) {
-      AppToast.info(context, 'No preview URL available for this document');
+  Future<void> _previewDoc(Map<String, dynamic> doc) async {
+    final url = (doc['previewUrl'] as String?)?.trim();
+    if (!_isDocUploaded(doc) || url == null || url.isEmpty) {
+      AppToast.info(context, 'Upload this PDF in Send Details Settings before previewing.');
       return;
     }
     final uri = Uri.tryParse(url);
@@ -368,18 +435,26 @@ class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
                       InkWell(
                         onTap: () {
                           setState(() {
-                            if (_selectedDocIds.length == _documents.length) {
+                            final uploadedIds = _documents
+                                .where(_isDocUploaded)
+                                .map((doc) => (doc['id'] as num?)?.toInt())
+                                .whereType<int>()
+                                .toList();
+                            if (_selectedDocIds.length == uploadedIds.length && uploadedIds.isNotEmpty) {
                               _selectedDocIds.clear();
                             } else {
-                              for (final doc in _documents) {
-                                final id = (doc['id'] as num?)?.toInt();
-                                if (id != null) _selectedDocIds.add(id);
-                              }
+                              _selectedDocIds
+                                ..clear()
+                                ..addAll(uploadedIds);
                             }
                           });
                         },
                         child: Text(
-                          _selectedDocIds.length == _documents.length ? 'Deselect All' : 'Select All',
+                          _selectedDocIds.isNotEmpty &&
+                                  _selectedDocIds.length ==
+                                      _documents.where(_isDocUploaded).length
+                              ? 'Deselect All'
+                              : 'Select All',
                           style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF4F46E5)),
                         ),
                       ),
@@ -410,7 +485,7 @@ class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
                       final isSelected = _selectedDocIds.contains(id);
                       final title = doc['title'] ?? 'Document';
                       final fileName = doc['fileName'] ?? 'document.pdf';
-                      final fileUrl = doc['fileUrl'] as String?;
+                      final uploaded = _isDocUploaded(doc);
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -450,17 +525,36 @@ class _SendDetailsSheetState extends ConsumerState<SendDetailsSheet> {
                                     style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A)),
                                   ),
                                   Text(
-                                    fileName,
+                                    uploaded ? fileName : 'PDF not uploaded',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.outfit(fontSize: 11, color: const Color(0xFF64748B)),
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      color: uploaded ? const Color(0xFF64748B) : const Color(0xFFDC2626),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
+                            if (!uploaded)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Text(
+                                  'MISSING',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFFDC2626),
+                                  ),
+                                ),
+                              ),
                             IconButton(
-                              icon: const Icon(Remix.eye_line, size: 18, color: Color(0xFF4F46E5)),
-                              onPressed: () => _previewDoc(fileUrl),
+                              icon: Icon(
+                                Remix.eye_line,
+                                size: 18,
+                                color: uploaded ? const Color(0xFF4F46E5) : const Color(0xFFCBD5E1),
+                              ),
+                              onPressed: uploaded ? () => _previewDoc(doc) : null,
                               tooltip: 'Preview',
                             ),
                           ],
