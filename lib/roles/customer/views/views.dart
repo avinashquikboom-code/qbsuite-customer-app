@@ -1,0 +1,27 @@
+// ── CUSTOMER / CUSTOMER - VIEWS ────────────────────────────────────────────────
+export 'customer_dashboard_view.dart';
+export 'customer_home_view.dart';
+export 'customer_plans_view.dart';
+export 'customer_orders_view.dart';
+export 'customer_order_details_view.dart';
+export 'customer_account_view.dart';
+export 'customer_support_view.dart';
+export 'customer_work_requests_view.dart';
+export 'social_media_work_handler_view.dart';
+export 'leads_view.dart';
+export 'lead_details_view.dart';
+export 'customer_trending_view.dart';
+export 'customer_marketplace_tools_view.dart';
+export 'customer_influencers_list_view.dart';
+export 'customer_influencer_profile_view.dart';
+export 'customer_influencer_packages_view.dart';
+export 'customer_influencer_checkout_view.dart';
+export 'customer_influencer_payment_view.dart';
+export 'customer_influencer_booking_confirmed_view.dart';
+export 'customer_my_influencer_bookings_view.dart';
+export 'customer_ai_studio_home_view.dart';
+export 'customer_ai_creation_form_view.dart';
+export 'customer_ai_preview_view.dart';
+export 'customer_ai_history_view.dart';
+export 'customer_social_publish_dialog.dart';
+export 'customer_social_connect_modal.dart';

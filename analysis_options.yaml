@@ -14,6 +14,8 @@ analyzer:
     - build/**
     - android/**
     - ios/**
+    - lib_legacy_qb/**
+    - test_legacy_qb/**
 
 linter:
   # The lint rules applied to this project can be customized in the
