@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quickboom_crm_customer/core/network/api_client.dart';
 import '../models/lead_stage_model.dart';
@@ -17,12 +18,8 @@ final leadStagesProvider =
 
 /// Exposes only active stages sorted by sortOrder.
 final activeLeadStagesProvider = Provider<List<LeadStageModel>>((ref) {
-  final stagesAsync = ref.watch(leadStagesProvider);
-  final stages = (stagesAsync.asData?.value ?? const <LeadStageModel>[])
-      .where((stage) => stage.isActive)
-      .toList();
-  stages.sort((a, b) => a.sortOrder.compareTo(b.sortOrder) == 0 ? a.id.compareTo(b.id) : a.sortOrder.compareTo(b.sortOrder));
-  return stages;
+  ref.watch(leadStagesProvider);
+  return ref.read(leadStagesProvider.notifier).activePipelineStages;
 });
 
 class LeadStagesNotifier extends AsyncNotifier<List<LeadStageModel>> {
@@ -31,28 +28,55 @@ class LeadStagesNotifier extends AsyncNotifier<List<LeadStageModel>> {
   List<LeadStageModel> get _effectiveStages =>
       state.asData?.value ?? const <LeadStageModel>[];
 
+  List<LeadStageModel> get activePipelineStages {
+    final stages = _effectiveStages.where((stage) => stage.isActive).toList();
+    stages.sort((a, b) {
+      final byOrder = a.sortOrder.compareTo(b.sortOrder);
+      return byOrder == 0 ? a.id.compareTo(b.id) : byOrder;
+    });
+    return stages;
+  }
+
+  Future<List<LeadStageModel>>? _refreshing;
+
   @override
   Future<List<LeadStageModel>> build() async {
     return _fetchStages();
   }
 
-  Future<List<LeadStageModel>>? _refreshing;
-
   Future<List<LeadStageModel>> _fetchStages() => _leadService.getStages();
 
-  /// Force-refresh from API. A failed refresh is shown as an error so an old stage list is not treated as current.
-  Future<void> refresh() {
-    final current = _refreshing;
-    if (current != null) return current.then((_) {});
+  /// Refresh stages without dropping cached data or entering a perpetual loading state.
+  Future<void> refresh() async {
+    final inFlight = _refreshing;
+    if (inFlight != null) {
+      await inFlight;
+      return;
+    }
+
+    final previous = state.asData?.value ?? const <LeadStageModel>[];
     final request = _fetchStages();
     _refreshing = request;
-    return () async {
-      state = await AsyncValue.guard(() => request);
-      if (identical(_refreshing, request)) _refreshing = null;
-    }();
+
+    try {
+      final fresh = await request;
+      if (!ref.mounted) return;
+      state = AsyncValue.data(fresh);
+    } catch (e, st) {
+      debugPrint('[LeadStagesNotifier] refresh failed: $e');
+      if (!ref.mounted) return;
+      if (previous.isNotEmpty) {
+        state = AsyncValue.data(previous);
+      } else {
+        state = AsyncValue.error(e, st);
+      }
+    } finally {
+      if (identical(_refreshing, request)) {
+        _refreshing = null;
+      }
+    }
   }
 
-  /// Resolve a single stage by its ID or key.
   LeadStageModel? stageById(dynamic stageId) {
     if (stageId == null) return null;
     final stages = _effectiveStages;
@@ -64,7 +88,6 @@ class LeadStagesNotifier extends AsyncNotifier<List<LeadStageModel>> {
     }
   }
 
-  /// Resolve a stage by its ID or fallback to its key.
   LeadStageModel? resolveLeadStage(dynamic stageId, [String? fallbackKey]) {
     final stages = _effectiveStages;
     if (stageId != null) {
@@ -79,12 +102,10 @@ class LeadStagesNotifier extends AsyncNotifier<List<LeadStageModel>> {
         '',
       );
 
-      // Check direct key match
       for (final s in stages) {
         if (s.key.toUpperCase() == cleanKey) return s;
       }
 
-      // Check known aliases
       if (cleanKey == 'DETAILS_SENT') {
         for (final s in stages) {
           if (s.key == 'DETAILS_SEND') return s;
@@ -109,20 +130,22 @@ class LeadStagesNotifier extends AsyncNotifier<List<LeadStageModel>> {
     return null;
   }
 
-  /// Returns the 0-based index of the stage with given stageId.
-  int stageIndexById(dynamic stageId) {
+  int stageIndexInPipeline(dynamic stageId) {
     if (stageId == null) return -1;
-    final stages = _effectiveStages;
     final strId = stageId.toString();
-    return stages.indexWhere((s) => s.id.toString() == strId);
+    return activePipelineStages.indexWhere((s) => s.id.toString() == strId);
   }
 
-  /// Returns the next stage after current stage (by sortOrder).
+  int stageIndexById(dynamic stageId) => stageIndexInPipeline(stageId);
+
+  /// Next stage in the active pipeline (sortOrder), not alphabetically.
   LeadStageModel? nextStage(dynamic currentStageId, [String? fallbackKey]) {
-    final stages = _effectiveStages;
+    final stages = activePipelineStages;
     if (stages.isEmpty) return null;
+
     final current = resolveLeadStage(currentStageId, fallbackKey);
     if (current == null) return null;
+
     final idx = stages.indexWhere(
       (s) => s.id == current.id || s.key == current.key,
     );

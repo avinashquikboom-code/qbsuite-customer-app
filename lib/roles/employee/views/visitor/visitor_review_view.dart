@@ -1,8 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:quickboom_crm_customer/core/network/api_client.dart';
+import 'package:quickboom_crm_customer/core/network/api_exception.dart';
 import 'package:quickboom_crm_customer/core/utils/app_toast.dart';
 import 'package:quickboom_crm_customer/core/theme/app_colors.dart';
 
@@ -43,6 +45,13 @@ class _VisitorReviewViewState extends ConsumerState<VisitorReviewView> {
     super.dispose();
   }
 
+  String _errorMessage(Object error) {
+    if (error is DioException) {
+      return ApiException.fromDioException(error).userMessage;
+    }
+    return error.toString();
+  }
+
   Future<void> _handleSubmitReview() async {
     final visitId = widget.visit['id'];
     if (visitId == null) return;
@@ -72,9 +81,6 @@ class _VisitorReviewViewState extends ConsumerState<VisitorReviewView> {
           .read(apiClientProvider)
           .patch('/mobile/visits/$visitId/complete', data: completeData);
 
-      // Invalidate leads so Visit Done lead disappears from Visitor Lead pipeline
-      
-
       Map<String, dynamic> updatedVisit = widget.visit;
       if (res.data != null && res.data is Map) {
         final raw = res.data['data'] is Map
@@ -86,6 +92,7 @@ class _VisitorReviewViewState extends ConsumerState<VisitorReviewView> {
       widget.onVisitUpdated?.call();
 
       if (mounted) {
+        AppToast.success(context, 'Visit completed successfully.');
         final customerName =
             updatedVisit['customer']?.toString() ??
             updatedVisit['customerName']?.toString() ??
@@ -106,7 +113,7 @@ class _VisitorReviewViewState extends ConsumerState<VisitorReviewView> {
       }
     } catch (e) {
       if (mounted) {
-        AppToast.error(context, 'Failed to complete visit: $e');
+        AppToast.error(context, _errorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

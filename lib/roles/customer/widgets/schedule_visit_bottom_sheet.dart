@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:quickboom_crm_customer/core/network/api_client.dart';
 import 'package:quickboom_crm_customer/core/theme/app_colors.dart';
 import 'package:quickboom_crm_customer/core/utils/app_toast.dart';
+import 'package:quickboom_crm_customer/core/services/crm_access.dart';
 import 'package:quickboom_crm_customer/core/services/permission_manager.dart';
 import 'package:quickboom_crm_customer/roles/customer/models/lead_model.dart';
 import 'package:quickboom_crm_customer/roles/customer/viewmodels/leads_viewmodel.dart';
@@ -31,18 +32,13 @@ Future<LeadModel?> showScheduleVisitBottomSheet(
   ScheduleVisitManageVisitFn? manageVisit,
 }) {
   final rbac = ref.read(permissionManagerProvider);
-  final rawRole = (rbac.role ?? '').trim().toUpperCase();
-  final isCustomerOrAdmin =
-      rawRole.contains('CUSTOMER') ||
-      rawRole.contains('ADMIN') ||
-      rawRole == 'SUPER_ADMIN';
-  final isBpo = rawRole.contains('BPO') || rbac.isCrmEligible;
-  final canSchedule =
-      isCustomerOrAdmin ||
-      isBpo ||
-      rbac.canViewLeads ||
-      rbac.canScheduleVisits ||
-      PermissionManager.instance.canScheduleVisits;
+  final canSchedule = canEmployeeScheduleFieldVisit(
+    role: rbac.role,
+    crmCategory: rbac.crmCategory,
+    isCrmEligible: rbac.isCrmEligible,
+    canScheduleVisits:
+        rbac.canScheduleVisits || PermissionManager.instance.canScheduleVisits,
+  );
   if (!canSchedule) {
     AppToast.error(
       context,

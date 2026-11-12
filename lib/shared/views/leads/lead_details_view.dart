@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:quickboom_crm_customer/core/theme/app_colors.dart';
 import 'package:quickboom_crm_customer/core/utils/app_toast.dart';
+import 'package:quickboom_crm_customer/core/services/crm_access.dart';
 import 'package:quickboom_crm_customer/core/services/permission_manager.dart';
 import 'package:quickboom_crm_customer/roles/customer/services/customer_service.dart';
 import 'package:quickboom_crm_customer/roles/customer/widgets/schedule_visit_bottom_sheet.dart';
@@ -56,6 +57,7 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
 
   @override
   void dispose() {
+    _isUpdatingStage = false;
     WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
@@ -65,7 +67,6 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && !_isUpdatingStage) {
       _fetchLead();
-      ref.read(leadStagesProvider.notifier).refresh();
     }
   }
 
@@ -154,23 +155,22 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
 
   bool get _isVisitor {
     final rbac = ref.read(permissionManagerProvider);
-    final rawRole = (rbac.role ?? '').trim().toUpperCase();
-    return !(rawRole.contains('ADMIN') || rawRole.contains('CUSTOMER') || rawRole.contains('BPO')) && (rawRole.contains('VISITOR') || rawRole.contains('FIELD') || rbac.canCompleteVisit);
+    return isFieldVisitorActor(
+      role: rbac.role,
+      crmCategory: rbac.crmCategory,
+      isCrmEligible: rbac.isCrmEligible,
+    );
   }
 
   bool get _canScheduleVisits {
     final rbac = ref.read(permissionManagerProvider);
-    final rawRole = (rbac.role ?? '').trim().toUpperCase();
-    final isCustomerOrAdmin =
-        rawRole.contains('CUSTOMER') ||
-        rawRole.contains('ADMIN') ||
-        rawRole == 'SUPER_ADMIN';
-    final isBpo = rawRole.contains('BPO') || rbac.isCrmEligible;
-    return isCustomerOrAdmin ||
-        isBpo ||
-        rbac.canViewLeads ||
-        rbac.canScheduleVisits ||
-        PermissionManager.instance.canScheduleVisits;
+    return canEmployeeScheduleFieldVisit(
+      role: rbac.role,
+      crmCategory: rbac.crmCategory,
+      isCrmEligible: rbac.isCrmEligible,
+      canScheduleVisits:
+          rbac.canScheduleVisits || PermissionManager.instance.canScheduleVisits,
+    );
   }
 
   bool _isVisitScheduleStage(LeadStageModel stage) {
@@ -332,9 +332,8 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
         AppToast.error(context, 'Failed to update stage: $cleanMsg');
       }
     } finally {
-      if (mounted) {
-        setState(() => _isUpdatingStage = false);
-      }
+      _isUpdatingStage = false;
+      if (mounted) setState(() {});
     }
   }
 
@@ -419,6 +418,9 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, idx) {
                     final stage = stages[idx];
+                    if (!_isVisitor && _isVisitDoneStage(stage)) {
+                      return const SizedBox.shrink();
+                    }
                     final isCurrent = currentStage != null
                         ? stage.id == currentStage.id ||
                               stage.key.toUpperCase() ==
@@ -605,6 +607,14 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
               .nextStage(lead.stageId, lead.status)
         : null;
 
+    final stageNotifier = ref.read(leadStagesProvider.notifier);
+    final pipelineStages = stageNotifier.activePipelineStages;
+    final stagePosition = lead != null ? stageNotifier.stageIndexInPipeline(lead.stageId) : -1;
+    final stageProgressLabel = stagePosition >= 0 && pipelineStages.isNotEmpty
+        ? 'Stage ${stagePosition + 1} of ${pipelineStages.length}'
+        : null;
+    final stagesInitialLoading = stagesAsync.isLoading && stagesAsync.asData == null;
+
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 360;
     final wide = width >= 720;
@@ -661,8 +671,12 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (stagesAsync.isLoading) const LinearProgressIndicator(),
-                    if (stagesAsync.hasError)
+                    if (stagesInitialLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: LinearProgressIndicator(minHeight: 2),
+                      ),
+                    if (stagesAsync.hasError && stages.isEmpty)
                       Material(
                         color: Colors.white,
                         child: ListTile(
@@ -851,6 +865,14 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
                             ],
                           ),
                           const SizedBox(height: 14),
+                          if (stageProgressLabel != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                stageProgressLabel,
+                                style: GoogleFonts.outfit(fontSize: fs(11), fontWeight: FontWeight.w600, color: const Color(0xFF64748B)),
+                              ),
+                            ),
 
                           // Stage Selector Button
                           InkWell(
@@ -2041,13 +2063,17 @@ class _BpoCommunicationsCardState extends ConsumerState<_BpoCommunicationsCard> 
       final raw = response.data;
       final payload = raw is Map && raw['data'] is Map ? raw['data'] as Map : raw;
       final summary = payload is Map ? payload['summary'] : null;
-      if (!mounted || summary is! Map) return;
-      setState(() {
-        _emails = (summary['totalEmails'] as num?)?.toInt() ?? 0;
-        _whatsapp = (summary['totalWhatsApp'] as num?)?.toInt() ?? 0;
-        _last = _ago(summary['lastContactAt']?.toString());
-        _loading = false;
-      });
+      if (!mounted) return;
+      if (summary is Map) {
+        setState(() {
+          _emails = (summary['totalEmails'] as num?)?.toInt() ?? 0;
+          _whatsapp = (summary['totalWhatsApp'] as num?)?.toInt() ?? 0;
+          _last = _ago(summary['lastContactAt']?.toString());
+          _loading = false;
+        });
+      } else {
+        setState(() => _loading = false);
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }

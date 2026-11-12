@@ -102,3 +102,52 @@ bool isVisitorTeamAccount({
   }
   return [department, designation, role].whereType<String>().any(_isVisitor);
 }
+
+bool isTelecallerOrBpoStaff({
+  String? role,
+  String? crmCategory,
+  bool isCrmEligible = false,
+}) {
+  final cat = (crmCategory ?? '').trim().toUpperCase();
+  if (cat == 'BPO') return true;
+  final raw = (role ?? '').trim().toUpperCase();
+  if (raw.contains('BPO')) return true;
+  if (_isTelesales(raw)) return true;
+  return isCrmEligible && cat != 'VISITOR' && cat != 'SALES';
+}
+
+bool isFieldVisitorActor({
+  String? role,
+  String? crmCategory,
+  bool isCrmEligible = false,
+}) {
+  if (isTelecallerOrBpoStaff(role: role, crmCategory: crmCategory, isCrmEligible: isCrmEligible)) {
+    return false;
+  }
+  final raw = (role ?? '').trim().toUpperCase();
+  if (raw.contains('ADMIN') || raw.contains('CUSTOMER') || raw == 'SUPER_ADMIN') {
+    return false;
+  }
+  final cat = (crmCategory ?? '').trim().toUpperCase();
+  if (cat == 'VISITOR') return true;
+  return raw.contains('VISITOR') || raw.contains('FIELD') || _isVisitor(raw);
+}
+
+bool canEmployeeScheduleFieldVisit({
+  String? role,
+  String? crmCategory,
+  bool isCrmEligible = false,
+  bool canScheduleVisits = false,
+}) {
+  final raw = (role ?? '').trim().toUpperCase();
+  final isCustomerOrAdmin =
+      raw.contains('CUSTOMER') || raw.contains('ADMIN') || raw == 'SUPER_ADMIN';
+  if (isCustomerOrAdmin) return true;
+  if (isFieldVisitorActor(role: role, crmCategory: crmCategory, isCrmEligible: isCrmEligible)) {
+    return false;
+  }
+  if (isTelecallerOrBpoStaff(role: role, crmCategory: crmCategory, isCrmEligible: isCrmEligible)) {
+    return true;
+  }
+  return canScheduleVisits;
+}

@@ -203,10 +203,12 @@ class LeadService {
   /// Fetch all configured pipeline stages from backend GET /leads/stages.
   Future<List<LeadStageModel>> getStages() async {
     if (_apiClient == null) throw StateError('API Client unavailable');
-    final res = await _apiClient.get(
-      '/leads/stages',
-      queryParameters: const {'includeInactive': 'false'},
-    );
+    final res = await _apiClient
+        .get(
+          '/leads/stages',
+          queryParameters: const {'includeInactive': 'false'},
+        )
+        .timeout(const Duration(seconds: 20));
     final items = _stageItems(res.data);
     if (items == null) {
       throw const FormatException('Invalid pipeline stages response');
@@ -413,7 +415,9 @@ class LeadService {
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       };
 
-      final res = await _apiClient.patch('/leads/$id/status', data: payload);
+      final res = await _apiClient
+          .patch('/leads/$id/status', data: payload)
+          .timeout(const Duration(seconds: 30));
       final raw = res.data;
       final root = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
       final result = LeadStatusUpdateResult.fromApiResponse(root);
