@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -125,13 +127,8 @@ class _DataCaptureResultsScreenState
       if (summary.imported > 0 ||
           summary.skippedDuplicates > 0 ||
           summary.records.any((r) => r.imported || r.duplicate)) {
-        try {
-          ref.invalidate(leadsProvider);
-          await ref.read(leadsProvider.notifier).refreshLeads();
-          await ref.read(leadStagesProvider.notifier).refresh();
-        } catch (e) {
-          debugPrint('[DATA_CAPTURE] Error refreshing leadsProvider: $e');
-        }
+        ref.read(leadsProvider.notifier).prefetchAfterImport();
+        unawaited(ref.read(leadStagesProvider.notifier).refresh());
       }
 
       setState(() => _isImporting = false);

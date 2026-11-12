@@ -138,8 +138,8 @@ class _RecordsState extends ConsumerState<DataCaptureRecordsScreen> {
         }
       });
       if (imported > 0 || duplicates > 0) {
-        ref.invalidate(leadsProvider);
-        ref.invalidate(leadStagesProvider);
+        ref.read(leadsProvider.notifier).prefetchAfterImport();
+        unawaited(ref.read(leadStagesProvider.notifier).refresh());
       }
       if (!mounted) return;
       setState(() => _importing = false);
@@ -1314,8 +1314,8 @@ class _RecordState extends ConsumerState<DataCaptureRecordScreen> {
             'status': 'LEAD_IMPORTED',
           });
         });
-        ref.invalidate(leadsProvider);
-        ref.invalidate(leadStagesProvider);
+        ref.read(leadsProvider.notifier).prefetchAfterImport();
+        unawaited(ref.read(leadStagesProvider.notifier).refresh());
         if (!mounted) return;
         AppSnackBar.showSuccess(
           context,

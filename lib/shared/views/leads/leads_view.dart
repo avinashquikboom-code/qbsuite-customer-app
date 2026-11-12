@@ -87,7 +87,9 @@ class _LeadsViewState extends ConsumerState<LeadsView>
       ref.read(leadStagesProvider);
       final notifier = ref.read(leadsProvider.notifier);
       final current = ref.read(leadsProvider);
-      if (!notifier.hasQuery && (current.isLoading || current.hasValue)) return;
+      final hasRows = current.asData?.value.isNotEmpty ?? false;
+      if (!notifier.hasQuery && hasRows) return;
+      if (current.isLoading && notifier.hasLoaded) return;
       _onSearchSubmitted();
     });
   }

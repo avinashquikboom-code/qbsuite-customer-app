@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -189,9 +191,8 @@ companyId/tenantId: ${tenantId ?? 'N/A'}
       }
 
       // Section 11 & 12: Invalidate Lead provider/ViewModel and refetch Lead Pipeline
-      ref.invalidate(leadsProvider);
-      await ref.read(leadsProvider.notifier).refreshLeads();
-      await ref.read(leadStagesProvider.notifier).refresh();
+      ref.read(leadsProvider.notifier).prefetchAfterImport();
+      unawaited(ref.read(leadStagesProvider.notifier).refresh());
 
       if (mounted) {
         setState(() {

@@ -181,8 +181,7 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
         to: to,
         page: 1,
         limit: 20,
-        includeCounts:
-            refreshCounts || !sameQuery || unfiltered || _stageCounts.isEmpty,
+        includeCounts: refreshCounts || (unfiltered && _stageCounts.isEmpty),
       );
       if (!ref.mounted || generation != _fetchGeneration) return;
       _page = result.page;
@@ -328,6 +327,10 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
     );
   }
 
+  void prefetchAfterImport() {
+    unawaited(fetchLeads(refreshCounts: true));
+  }
+
   Future<LeadModel?> getLeadDetails(String id) async {
     try {
       final lead = await _leadService.getLeadById(id);
@@ -423,7 +426,13 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
         notes: notes,
         employeeId: employeeId,
       );
-      await refreshLeads();
+      addOrUpdateLead(updated);
+      if (action == 'SCHEDULE') {
+        unawaited(refreshLeads());
+        ref.read(leadStagesProvider.notifier).refresh();
+      } else {
+        unawaited(refreshLeads());
+      }
       return updated;
     } catch (e) {
       debugPrint('[LeadsViewModel] manageVisit error: $e');
@@ -452,7 +461,10 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
   Future<LeadModel?> updateLead(String id, Map<String, dynamic> data) async {
     final updated = await _leadService.updateLead(id, data);
     addOrUpdateLead(updated);
-    await refreshLeads();
+    final stageTouched = data.containsKey('stageId') || data.containsKey('status');
+    if (stageTouched) {
+      unawaited(refreshLeads());
+    }
     return updated;
   }
 

@@ -482,7 +482,6 @@ class LeadService {
     final map = (raw is Map && raw['data'] is Map)
         ? Map<String, dynamic>.from(raw['data'] as Map)
         : (raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{});
-    await _attachCapturePhotos(map);
     return LeadModel.fromJson(map);
   }
 

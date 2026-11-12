@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +13,8 @@ import 'package:quickboom_crm_customer/core/services/permission_manager.dart';
 import 'package:quickboom_crm_customer/roles/customer/models/lead_model.dart';
 import 'package:quickboom_crm_customer/roles/customer/viewmodels/leads_viewmodel.dart';
 import 'package:quickboom_crm_customer/roles/customer/viewmodels/lead_stages_viewmodel.dart';
+
+typedef VisitScheduledCallback = FutureOr<void> Function(LeadModel lead);
 
 typedef ScheduleVisitManageVisitFn = Future<LeadModel?> Function(
   String id, {
@@ -28,7 +32,7 @@ Future<LeadModel?> showScheduleVisitBottomSheet(
   BuildContext context, {
   required LeadModel lead,
   required WidgetRef ref,
-  Function(LeadModel)? onVisitScheduled,
+  VisitScheduledCallback? onVisitScheduled,
   ScheduleVisitManageVisitFn? manageVisit,
 }) {
   final rbac = ref.read(permissionManagerProvider);
@@ -63,7 +67,7 @@ Future<LeadModel?> showScheduleVisitBottomSheet(
 
 class ScheduleVisitBottomSheet extends ConsumerStatefulWidget {
   final LeadModel lead;
-  final Function(LeadModel)? onVisitScheduled;
+  final VisitScheduledCallback? onVisitScheduled;
   final ScheduleVisitManageVisitFn? manageVisit;
 
   const ScheduleVisitBottomSheet({
@@ -318,7 +322,12 @@ class _ScheduleVisitBottomSheetState
       if (updated != null) {
         ref.read(leadsProvider.notifier).refreshCurrentList();
         ref.read(leadStagesProvider.notifier).refresh();
-        widget.onVisitScheduled?.call(updated);
+        try {
+          await widget.onVisitScheduled?.call(updated);
+        } catch (refreshError) {
+          debugPrint('[VISIT_SCHEDULE] post-save lead refresh failed: $refreshError');
+        }
+        if (!mounted) return;
         Navigator.pop(context, updated);
         AppToast.success(context, 'Field Visit Scheduled Successfully!');
       } else {
