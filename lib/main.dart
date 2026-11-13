@@ -87,6 +87,26 @@ void main() async {
 
   unawaited(_startFirebase());
 
+  try {
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.edgeToEdge,
+      overlays: SystemUiOverlay.values,
+    );
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+    );
+  } catch (e) {
+    debugPrint('[STARTUP_ERROR] SystemUI error: $e');
+  }
+
+  runApp(const ProviderScope(child: MyApp()));
+
   // Launch notification service non-blockingly so main() never hangs
   try {
     unawaited(
@@ -127,28 +147,7 @@ void main() async {
     debugPrint('[STARTUP] location initialization completed');
   }
 
-  try {
-    await SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.edgeToEdge,
-      overlays: SystemUiOverlay.values,
-    );
-
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.dark,
-      ),
-    );
-  } catch (e) {
-    debugPrint('[STARTUP_ERROR] SystemUI error: $e');
-  }
-
   debugPrint('[STARTUP] initialization completed');
-  runApp(const ProviderScope(child: MyApp()));
-  debugPrint('[STARTUP] runApp completed');
 }
 
 class MyApp extends ConsumerWidget {
