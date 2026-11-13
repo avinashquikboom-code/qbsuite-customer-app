@@ -70,7 +70,7 @@ class DataCaptureRecordsService {
         'status': status,
         'source': source,
         'category': category,
-        if (jobId != null) 'jobId': jobId,
+        'jobId': ?jobId,
       },
     ),
   );
@@ -201,7 +201,7 @@ class DataCaptureRecordsService {
     await _request(
       'POST',
       '${AppUrl.dataCapture}/$id/$action',
-      body: {if (reason != null) 'reason': reason},
+      body: {'reason': ?reason},
     );
   }
 }

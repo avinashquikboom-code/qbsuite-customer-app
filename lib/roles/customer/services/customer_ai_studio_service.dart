@@ -366,7 +366,7 @@ class CustomerAiStudioService {
           'accountIds': [socialAccountId],
           'content': content ?? '',
           'mediaUrls': mediaUrls,
-          if (generationId != null) 'generationId': generationId,
+          'generationId': ?generationId,
           // ignore: use_null_aware_elements — must omit key when null (backend IsString rejects null)
           if (scheduledFor != null)
             'scheduledFor': scheduledFor.toIso8601String(),

@@ -746,13 +746,13 @@ status=$status
           if (date != null && date.isNotEmpty) 'date': date,
           if (time != null && time.isNotEmpty) 'time': time,
           if (location != null && location.isNotEmpty) 'location': location,
-          if (latitude != null) 'latitude': latitude,
-          if (longitude != null) 'longitude': longitude,
+          'latitude': ?latitude,
+          'longitude': ?longitude,
           if (summary != null && summary.isNotEmpty) 'summary': summary,
           if (customerResponse != null && customerResponse.isNotEmpty)
             'customerResponse': customerResponse,
           if (notes != null && notes.isNotEmpty) 'notes': notes,
-          if (employeeId != null) 'employeeId': employeeId,
+          'employeeId': ?employeeId,
         };
 
         final res = await _apiClient.post(

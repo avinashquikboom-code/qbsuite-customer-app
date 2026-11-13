@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:quickboom_crm_customer/core/network/api_client.dart';
-import 'package:quickboom_crm_customer/core/network/app_url.dart';
 import 'package:flutter/foundation.dart';
 import '../models/lead_model.dart';
 import '../models/lead_stage_model.dart';
@@ -60,12 +59,14 @@ class LeadService {
     if (url.startsWith('https://lh3.googleusercontent.com/')) {
       return '/api/v1/data-capture/photo?ref=${Uri.encodeComponent(url)}';
     }
-    if (url.contains('AIzaSy') || url.contains('places.googleapis.com'))
+    if (url.contains('AIzaSy') || url.contains('places.googleapis.com')) {
       return null;
+    }
     if (url.startsWith('https://') ||
         url.startsWith('http://') ||
-        url.startsWith('/uploads/'))
+        url.startsWith('/uploads/')) {
       return url;
+    }
     return null;
   }
 
@@ -105,8 +106,9 @@ class LeadService {
             final leadId = int.tryParse('${row['importedLeadId']}');
             if (leadId != null) byLead[leadId] = photos;
             final placeId = row['googlePlaceId']?.toString() ?? '';
-            if (placeId.isNotEmpty && !placeId.startsWith('custom_'))
+            if (placeId.isNotEmpty && !placeId.startsWith('custom_')) {
               byPlace[placeId] = photos;
+            }
           }
           final pageInfo = payload is Map
               ? payload['pagination'] ?? payload['meta']
@@ -154,7 +156,7 @@ class LeadService {
       final encodedPlaceId = Uri.encodeComponent(lead.googlePlaceId!);
       // This endpoint resolves by place ID using the tenant's configured Maps key.
       final url =
-          '${_apiClient!.dio.options.baseUrl}/data-capture/places/$encodedPlaceId/photo';
+          '${_apiClient.dio.options.baseUrl}/data-capture/places/$encodedPlaceId/photo';
       final index = output.indexWhere((item) => item.id == lead.id);
       if (index >= 0) {
         output[index] = lead.copyWith(imageUrl: url, images: [url]);
@@ -218,8 +220,9 @@ class LeadService {
     for (final item in items) {
       if (item is! Map) continue;
       final stage = LeadStageModel.fromJson(Map<String, dynamic>.from(item));
-      if (stage.id <= 0 || stage.name.trim().isEmpty || !seenIds.add(stage.id))
+      if (stage.id <= 0 || stage.name.trim().isEmpty || !seenIds.add(stage.id)) {
         continue;
+      }
       stages.add(stage);
     }
     stages.sort(
@@ -278,7 +281,7 @@ class LeadService {
         queryParameters: {
           'page': currentPage,
           'limit': limit,
-          if (stageId != null) 'stageId': stageId,
+          'stageId': ?stageId,
           if (stageId == null &&
               status != null &&
               status.isNotEmpty &&
@@ -290,7 +293,7 @@ class LeadService {
             'source': source.trim(),
           if (category != null && category.trim().isNotEmpty)
             'category': category.trim(),
-          if (assignedToId != null) 'assignedToId': assignedToId,
+          'assignedToId': ?assignedToId,
           if (from != null && from.isNotEmpty) 'from': from,
           if (to != null && to.isNotEmpty) 'to': to,
           if (includeCounts && currentPage == page) 'includeCounts': 'true',
@@ -411,7 +414,7 @@ class LeadService {
     if (_apiClient != null) {
       final payload = <String, dynamic>{
         'status': status,
-        if (stageId != null) 'stageId': stageId,
+        'stageId': ?stageId,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
       };
 
@@ -540,10 +543,10 @@ class LeadService {
         if (date != null && date.isNotEmpty) 'date': date,
         if (time != null && time.isNotEmpty) 'time': time,
         if (location != null && location.isNotEmpty) 'location': location,
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
-        if (employeeId != null) 'employeeId': employeeId,
+        'employeeId': ?employeeId,
       };
 
       final res = await _apiClient.post('/leads/$id/visits', data: payload);

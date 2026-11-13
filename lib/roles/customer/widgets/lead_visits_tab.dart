@@ -306,7 +306,7 @@ class LeadVisitsTab extends StatelessWidget {
                   child: Text(
                     [
                       if (dateLabel.isNotEmpty) dateLabel,
-                      if (timeLabel != null) timeLabel,
+                      ?timeLabel,
                     ].join(' • '),
                     style: GoogleFonts.outfit(
                       fontSize: 13,

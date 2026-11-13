@@ -212,8 +212,9 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
   }
 
   Future<void> loadMore() async {
-    if (_inFlight != null || _loadingMore || !hasMore || state.asData == null)
+    if (_inFlight != null || _loadingMore || !hasMore || state.asData == null) {
       return;
+    }
     final generation = _fetchGeneration;
     _loadingMore = true;
     state = AsyncValue.data(List<LeadModel>.from(state.asData!.value));
@@ -393,8 +394,9 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
         debugPrint('[LeadsViewModel] updateStatus FAILED: $e');
         rethrow;
       } finally {
-        if (identical(_stageUpdates[requestKey], request))
+        if (identical(_stageUpdates[requestKey], request)) {
           _stageUpdates.remove(requestKey);
+        }
       }
     }();
     _stageUpdates[requestKey] = request;
@@ -510,10 +512,11 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
     }
     final currentList = state.asData?.value;
     if (!_matchesStage(lead)) {
-      if (currentList != null)
+      if (currentList != null) {
         state = AsyncValue.data(
           currentList.where((item) => item.id != lead.id).toList(),
         );
+      }
       return;
     }
     if (currentList == null) {
@@ -542,10 +545,11 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
     }
     final currentList = state.asData?.value;
     if (!_matchesStage(lead)) {
-      if (currentList != null)
+      if (currentList != null) {
         state = AsyncValue.data(
           currentList.where((item) => item.id != lead.id).toList(),
         );
+      }
       return;
     }
     if (currentList == null) return;

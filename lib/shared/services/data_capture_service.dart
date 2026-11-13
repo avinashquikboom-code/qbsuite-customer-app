@@ -66,7 +66,7 @@ class DataCaptureService {
           'location': location.trim(),
           'maxResults': maxResults,
           'source': 'GOOGLE_PLACES',
-          if (requestId != null) 'requestId': requestId,
+          'requestId': ?requestId,
         };
 
         final res = await _apiClient.post(

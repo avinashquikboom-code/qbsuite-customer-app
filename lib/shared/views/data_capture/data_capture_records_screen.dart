@@ -1533,7 +1533,7 @@ class _RecordState extends ConsumerState<DataCaptureRecordScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(child: valueText),
-                        if (trailing != null) trailing,
+                        ?trailing,
                       ],
                     ),
                   ],
@@ -1543,7 +1543,7 @@ class _RecordState extends ConsumerState<DataCaptureRecordScreen> {
                   children: [
                     SizedBox(width: constraints.maxWidth * 0.38, child: labelText),
                     Expanded(child: valueText),
-                    if (trailing != null) trailing,
+                    ?trailing,
                   ],
                 ),
         );

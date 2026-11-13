@@ -94,7 +94,7 @@ class SocialMediaProfilesCard extends StatelessWidget {
     final websiteEntry = SocialMediaProfilesCard.websiteEntry(website);
     final entries = [
       ...?model?.entries,
-      if (websiteEntry != null) websiteEntry,
+      ?websiteEntry,
     ];
     if (entries.isEmpty) {
       if (!showEmpty) return const SizedBox.shrink();
@@ -275,7 +275,7 @@ class LeadSocialIconRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = socialMedia is SocialMediaModel ? socialMedia as SocialMediaModel : SocialMediaModel.from(socialMedia);
     final link = SocialMediaProfilesCard.websiteEntry(website);
-    final entries = [...?model?.entries, if (link != null) link];
+    final entries = [...?model?.entries, ?link];
     if (entries.isEmpty) return const SizedBox.shrink();
     if (showHandles) {
       return Padding(
