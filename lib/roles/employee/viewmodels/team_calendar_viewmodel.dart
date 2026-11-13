@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:quickboom_company_admin/roles/company_admin/models/company_admin_models.dart';
 import 'package:quickboom_company_admin/roles/company_admin/models/team_model.dart';

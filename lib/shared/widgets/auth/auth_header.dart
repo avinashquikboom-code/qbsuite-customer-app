@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:remixicon/remixicon.dart';
@@ -18,9 +18,9 @@ class AuthHeader extends StatelessWidget {
       children: [
         // App Logo
         SizedBox(
-          width: 100,
+          height: MediaQuery.sizeOf(context).width < 360 ? 64 : 78,
           child: Image.asset(
-            'assets/images/app_logo.png',
+            'assets/images/logo.png',
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) => Center(
               child: Container(

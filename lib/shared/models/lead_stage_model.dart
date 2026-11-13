@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Represents a CRM Lead Pipeline Stage returned by GET /leads/stages.
 /// Single source of truth for all stage UI:

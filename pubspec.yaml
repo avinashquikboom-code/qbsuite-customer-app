@@ -45,6 +45,7 @@ dependencies:
   quickboom_company_admin:
     path: ../company_admin_app
 
+  material_ui: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -56,10 +57,10 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/images/app_logo.png"
-  min_sdk_android: 21
+  image_path: assets/images/app_logo.png
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/app_logo.png"
+  adaptive_icon_foreground: assets/images/app_logo.png
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true

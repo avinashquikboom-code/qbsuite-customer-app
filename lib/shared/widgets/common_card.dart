@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quickboom_crm_customer/core/theme/app_colors.dart';
 
 /// Reusable theme-aware Card container for Employee, Customer, and Admin roles.

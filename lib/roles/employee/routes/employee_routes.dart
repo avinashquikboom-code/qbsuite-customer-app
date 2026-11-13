@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quickboom_crm_customer/core/models/permission_model.dart';
 import 'package:quickboom_crm_customer/shared/widgets/permission_guarded_view.dart';
 import 'package:quickboom_crm_customer/shared/views/data_capture/data_capture_home_screen.dart';

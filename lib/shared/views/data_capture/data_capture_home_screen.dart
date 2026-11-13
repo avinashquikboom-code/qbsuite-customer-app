@@ -1,7 +1,7 @@
 import '../../models/capture_history.dart';
 import '../../services/data_capture_records_service.dart';
 import 'data_capture_records_screen.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:remixicon/remixicon.dart';
 import 'package:quickboom_crm_customer/core/theme/app_colors.dart';

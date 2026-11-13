@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:quickboom_crm_customer/shared/widgets/skeleton_loader.dart';
 
 /// Comprehensive Skeleton Loader for the Lead Details Screen:

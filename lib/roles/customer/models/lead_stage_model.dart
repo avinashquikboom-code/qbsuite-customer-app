@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Represents a single lead stage returned by GET /leads/stages.
 /// This is the SINGLE SOURCE OF TRUTH for all stage UI:
