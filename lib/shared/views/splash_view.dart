@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:remixicon/remixicon.dart';
@@ -81,10 +80,7 @@ class _SplashViewState extends ConsumerState<SplashView> {
                         fit: BoxFit.contain,
                       ),
                     ),
-                  )
-                  .animate()
-                  .scale(duration: 800.ms, curve: Curves.easeOutBack)
-                  .shimmer(delay: 1000.ms, duration: 1500.ms),
+                  ),
               const SizedBox(height: 24),
               Text(
                 'QB Suite Customer',
@@ -95,7 +91,7 @@ class _SplashViewState extends ConsumerState<SplashView> {
                   color: AppTheme.textPrimary,
                   letterSpacing: -0.5,
                 ),
-              ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3, end: 0),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Your Business Suite',
@@ -105,7 +101,7 @@ class _SplashViewState extends ConsumerState<SplashView> {
                   letterSpacing: 2,
                   fontWeight: FontWeight.w500,
                 ),
-              ).animate().fadeIn(delay: 600.ms),
+              ),
 
               // Error and Retry State
               if (effectiveError != null) ...[
@@ -190,7 +186,7 @@ class _SplashViewState extends ConsumerState<SplashView> {
                       ),
                     ],
                   ),
-                ).animate().fadeIn(duration: 300.ms),
+                ),
               ] else if (_showFallback) ...[
                 const SizedBox(height: 28),
                 TextButton(
@@ -207,7 +203,7 @@ class _SplashViewState extends ConsumerState<SplashView> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ).animate().fadeIn(duration: 400.ms),
+                ),
               ],
             ],
           ),
