@@ -87,9 +87,10 @@ class _SplashViewState extends ConsumerState<SplashView> {
                   .shimmer(delay: 1000.ms, duration: 1500.ms),
               const SizedBox(height: 24),
               Text(
-                'QB SUITE',
+                'QB Suite Customer',
+                textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
-                  fontSize: 30,
+                  fontSize: 26,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
                   letterSpacing: -0.5,

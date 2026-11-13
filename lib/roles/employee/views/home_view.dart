@@ -411,7 +411,7 @@ class _EmployeeHomeViewState extends ConsumerState<EmployeeHomeView>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'QB Suite',
+                    'QB Suite Customer',
                     style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

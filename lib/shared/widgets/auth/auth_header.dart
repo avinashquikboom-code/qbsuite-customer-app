@@ -8,7 +8,7 @@ class AuthHeader extends StatelessWidget {
 
   const AuthHeader({
     super.key,
-    this.portalSubtitle = 'EMPLOYEE WORKFORCE PORTAL',
+    this.portalSubtitle = 'CUSTOMER WORKFORCE PORTAL',
   });
 
   @override

@@ -23,12 +23,6 @@ class LoginRoleTabSwitch extends StatelessWidget {
           title: 'Customer',
           icon: Remix.user_3_fill,
         ),
-        const SizedBox(width: 8),
-        _buildRoleCard(
-          role: MobileUserRole.employee,
-          title: 'Employee',
-          icon: Remix.briefcase_4_fill,
-        ),
       ],
     );
   }

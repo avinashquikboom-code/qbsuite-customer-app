@@ -121,7 +121,7 @@ void main() {
         expect(find.text('Login to Your Account'), findsOneWidget);
         expect(find.text('Choose your login type to continue'), findsOneWidget);
         expect(find.text('CUSTOMER WORKFORCE PORTAL'), findsOneWidget);
-        expect(find.text('Employee'), findsOneWidget);
+        expect(find.text('Employee'), findsNothing);
         expect(find.text('Enter your email address'), findsOneWidget);
         expect(find.text('Send OTP'), findsOneWidget);
         expect(find.text('Login with Password'), findsOneWidget);
@@ -150,30 +150,20 @@ void main() {
       expect(find.text('Business / Company Name *'), findsOneWidget);
     });
 
-    testWidgets(
-      'Tapping Employee switches the portal, and Customer switches back',
-      (tester) async {
-        await tester.pumpWidget(
-          const ProviderScope(
-            child: MaterialApp(
-              home: LoginView(initialRole: MobileUserRole.customer),
-            ),
+    testWidgets('Login stays on the customer portal', (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: LoginView(initialRole: MobileUserRole.customer),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        expect(find.text('CUSTOMER WORKFORCE PORTAL'), findsOneWidget);
-
-        // Tap Employee Login
-        await tester.tap(find.text('Employee'));
-        await tester.pumpAndSettle();
-        expect(find.text('EMPLOYEE WORKFORCE PORTAL'), findsOneWidget);
-
-        await tester.tap(find.text('Customer'));
-        await tester.pumpAndSettle();
-        expect(find.text('CUSTOMER WORKFORCE PORTAL'), findsOneWidget);
-      },
-    );
+      expect(find.text('CUSTOMER WORKFORCE PORTAL'), findsOneWidget);
+      expect(find.text('Employee'), findsNothing);
+      expect(find.text('EMPLOYEE WORKFORCE PORTAL'), findsNothing);
+    });
 
     testWidgets('Password login stays on the customer portal', (tester) async {
       await tester.pumpWidget(

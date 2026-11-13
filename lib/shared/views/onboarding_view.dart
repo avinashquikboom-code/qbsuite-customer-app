@@ -21,7 +21,7 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   final List<OnboardingContent> _contents = [
     OnboardingContent(
-      title: 'Welcome to QB Suite',
+      title: 'Welcome to QB Suite Customer',
       description: 'Manage your work easily from one place.',
       icon: Remix.rocket_2_line,
       color: AppTheme.primaryColor,

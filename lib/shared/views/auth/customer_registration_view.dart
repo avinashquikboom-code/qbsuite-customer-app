@@ -131,7 +131,7 @@ class _CustomerRegistrationViewState
         setState(() => _isLoading = false);
         AppToast.success(
           context,
-          'Account created successfully! Welcome to QB Suite.',
+          'Account created successfully! Welcome to QB Suite Customer.',
           title: 'Registration Successful',
           isAuthToast: true,
         );

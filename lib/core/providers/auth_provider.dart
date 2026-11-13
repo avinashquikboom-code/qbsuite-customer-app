@@ -217,12 +217,10 @@ class LoginStateNotifier extends Notifier<LoginState> {
       debugPrint('userRole: $roleStr -> $parsedRole');
 
       final apiClient = ref.read(apiClientProvider);
-      final storedCategory = await SecureStorageService.getCrmCategory();
-      final isAdmin = parsedRole == UserRole.companyAdmin;
       final hasStoredSession =
           (accessToken != null && accessToken.isNotEmpty) ||
           (refreshToken != null && refreshToken.isNotEmpty);
-      if (hasStoredSession && !isAdmin && storedCategory != 'BPO' && storedCategory != 'SALES') {
+      if (hasStoredSession && parsedRole != UserRole.customer) {
         await SecureStorageService.clearAll();
         await apiClient.clearAuth(notifySessionExpired: false);
         PermissionManager.instance.clear();
@@ -231,7 +229,7 @@ class LoginStateNotifier extends Notifier<LoginState> {
           isInitializing: false,
           isLoading: false,
           isLoggedIn: false,
-          error: kCrmAccessRestrictedMessage,
+          error: kCustomerAppAccessMessage,
         );
         return;
       }

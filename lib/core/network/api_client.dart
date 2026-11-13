@@ -166,7 +166,7 @@ class ApiClient {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
               'x-client-type': 'mobile',
-              'x-app': 'crm',
+              'x-app': 'customer',
             },
           ),
         );
@@ -192,7 +192,7 @@ class ApiClient {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
               'x-client-type': 'mobile',
-              'x-app': 'crm',
+              'x-app': 'customer',
             },
           ),
         );

@@ -9,6 +9,6 @@ class AppConfig {
   static const bool uiOnlyMode = false;
 
   /// Application environment identifier
-  static const String appName = 'QB Suite';
+  static const String appName = 'QB Suite Customer';
   static const String appVersion = '1.0.0+1';
 }

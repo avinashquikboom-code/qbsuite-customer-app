@@ -47,7 +47,7 @@ class NotificationService with WidgetsBindingObserver {
   static const _legacyChannel = AndroidNotificationChannel(
     'high_importance_channel',
     'High importance notifications',
-    description: 'QB Suite alerts and work updates',
+    description: 'QB Suite Customer alerts and work updates',
     importance: Importance.max,
     playSound: true,
     enableVibration: true,
@@ -424,7 +424,7 @@ class NotificationService with WidgetsBindingObserver {
     FlutterLocalNotificationsPlugin local,
   ) async {
     final title =
-        message.notification?.title ?? message.data['title'] ?? 'QB Suite';
+        message.notification?.title ?? message.data['title'] ?? 'QB Suite Customer';
     final body =
         message.notification?.body ??
         message.data['body'] ??
@@ -1045,7 +1045,7 @@ class NotificationService with WidgetsBindingObserver {
     debugPrint('[LOCAL_NOTIFICATION] Displayed');
 
     final title =
-        message.notification?.title ?? message.data['title'] ?? 'QB Suite';
+        message.notification?.title ?? message.data['title'] ?? 'QB Suite Customer';
     final body =
         message.notification?.body ??
         message.data['body'] ??

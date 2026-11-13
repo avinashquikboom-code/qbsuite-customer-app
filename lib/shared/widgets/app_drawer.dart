@@ -601,7 +601,7 @@ class AppDrawer extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'QB Suite',
+                    'QB Suite Customer',
                     style: GoogleFonts.outfit(
                       fontSize: 19,
                       fontWeight: FontWeight.bold,

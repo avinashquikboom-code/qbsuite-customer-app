@@ -3,6 +3,9 @@ enum CrmEmployeeCategory { bpo, visitor, sales, none }
 
 const String kCrmAccessRestrictedTitle = 'Access Restricted';
 
+const String kCustomerAppAccessMessage =
+    'This app is only for customers who registered on mobile or were created from a lead.';
+
 const String kCrmAccessRestrictedMessage =
     'Your account is not authorized to access the QB Suite CRM application.\n\n'
     'Visitor and Lead Visitor employees use the QB Suite Visitor app. CRM access is available to BPO and Sales employees.\n\n'

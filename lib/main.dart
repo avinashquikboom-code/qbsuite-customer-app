@@ -238,7 +238,7 @@ class MyApp extends ConsumerWidget {
       child: MaterialApp(
         navigatorKey: NotificationService.instance.navigatorKey,
         scaffoldMessengerKey: NotificationService.instance.messengerKey,
-        title: 'QB Suite',
+        title: 'QB Suite Customer',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,

@@ -7,7 +7,7 @@ import '../../../shared/widgets/auth/login_role_card.dart';
 import 'login_view.dart';
 
 /// Pre-login Role Selection screen.
-/// Presents supported roles (Customer, Employee).
+/// Presents the customer account type.
 class RoleSelectionView extends StatefulWidget {
   const RoleSelectionView({super.key});
 
@@ -80,7 +80,8 @@ class _RoleSelectionViewState extends State<RoleSelectionView> {
                   const SizedBox(height: 18),
 
                   Text(
-                    'QB SUITE',
+                    'QB Suite Customer',
+                    textAlign: TextAlign.center,
                     style: GoogleFonts.outfit(
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
@@ -108,17 +109,6 @@ class _RoleSelectionViewState extends State<RoleSelectionView> {
                     themeColor: AppColors.primary,
                     isSelected: _selectedRole == MobileUserRole.customer,
                     onTap: () => _navigateToLogin(MobileUserRole.customer),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Employee Role Card
-                  LoginRoleCard(
-                    title: 'Employee',
-                    subtitle: 'CRM workspace, attendance, field visits & tasks',
-                    icon: Remix.briefcase_line,
-                    themeColor: const Color(0xFF0F172A),
-                    isSelected: _selectedRole == MobileUserRole.employee,
-                    onTap: () => _navigateToLogin(MobileUserRole.employee),
                   ),
                   const SizedBox(height: 36),
 

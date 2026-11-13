@@ -31,8 +31,8 @@ import 'package:quickboom_crm_customer/roles/customer/views/customer_dashboard_v
 import 'package:quickboom_crm_customer/roles/employee/viewmodels/employee_attendance_viewmodel.dart';
 import 'package:quickboom_crm_customer/roles/employee/viewmodels/employee_profile_viewmodel.dart';
 import 'package:quickboom_crm_customer/roles/employee/viewmodels/work_permissions_viewmodel.dart';
+import 'customer_registration_view.dart';
 import 'forgot_password_view.dart';
-import 'employee_registration_view.dart';
 
 enum MobileUserRole { employee, customer, admin }
 enum LoginMethod { email, mobile, employeeId }
@@ -41,7 +41,7 @@ enum LoginStage { input, otp, verifying }
 class LoginView extends ConsumerStatefulWidget {
   final MobileUserRole initialRole;
 
-  const LoginView({super.key, this.initialRole = MobileUserRole.employee});
+  const LoginView({super.key, this.initialRole = MobileUserRole.customer});
 
   @override
   ConsumerState<LoginView> createState() => _LoginViewState();
@@ -111,7 +111,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
   @override
   void initState() {
     super.initState();
-    _currentRole = widget.initialRole;
+    _currentRole = MobileUserRole.customer;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.instance.requestAndroidNotificationPermission();
       final denied = ref.read(loginStateProvider).error;
@@ -241,7 +241,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
     return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
   }
 
-  bool _acceptsEmployeeCode() => _currentRole == MobileUserRole.employee;
+  bool _acceptsEmployeeCode() => false;
 
   void _putIdentifier(Map<String, dynamic> body, String rawVal) {
     if (_isMobileLogin) {
@@ -482,14 +482,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
     try {
       final apiClient = ref.read(apiClientProvider);
 
-      String endpoint = AppUrl.login;
-      if (_currentRole == MobileUserRole.customer) {
-        endpoint = AppUrl.loginCustomer;
-      } else if (_currentRole == MobileUserRole.employee) {
-        endpoint = AppUrl.loginEmployee;
-      } else if (_currentRole == MobileUserRole.admin) {
-        endpoint = AppUrl.loginCompanyAdmin;
-      }
+      const endpoint = AppUrl.loginCustomer;
 
       final loginIdentifier = _isMobileLogin
           ? (_normalizedMobile() ?? identifier.trim())
@@ -582,9 +575,6 @@ class _LoginViewState extends ConsumerState<LoginView> {
               (uFirst.isNotEmpty ? uFirst : 'Customer'));
 
     final rawRole = user?['role']?.toString() ?? '';
-    final employeeRecord = user?['employee'] is Map
-        ? Map<String, dynamic>.from(user!['employee'] as Map)
-        : null;
     final UserRole parsedRole;
     try {
       parsedRole = UserRole.fromString(rawRole);
@@ -598,52 +588,14 @@ class _LoginViewState extends ConsumerState<LoginView> {
       return;
     }
 
-    if (parsedRole == UserRole.customer) {
+    if (parsedRole != UserRole.customer) {
       await SecureStorageService.clearAll();
       await ref.read(apiClientProvider).clearAuth(notifySessionExpired: false);
       PermissionManager.instance.clear();
       if (mounted) {
         _showAccessRestrictedUI(
-          title: kCrmAccessRestrictedTitle,
-          message: kCrmAccessRestrictedMessage,
-        );
-      }
-      return;
-    }
-
-    final isCompanyAdmin = parsedRole == UserRole.companyAdmin;
-    final departmentLabel = crmLabel(employeeRecord?['department'] ?? user?['department']);
-    final designationLabel = crmLabel(employeeRecord?['designation'] ?? user?['designation']);
-    final roleLabel = [
-      rawRole,
-      crmLabel(user?['roleName']),
-      crmLabel(user?['effectiveRole']),
-      crmLabel(employeeRecord?['role']),
-    ].whereType<String>().join(' ');
-    final backendCategory = (user?['crmCategory'] ?? employeeRecord?['crmCategory'])?.toString();
-    final accessCategory = classifyCrmEmployee(
-      department: departmentLabel,
-      designation: designationLabel,
-      role: roleLabel,
-      backendCategory: backendCategory,
-    );
-    final visitorTeam = isVisitorTeamAccount(
-      department: departmentLabel,
-      designation: designationLabel,
-      role: roleLabel,
-      backendCategory: backendCategory,
-    );
-    if (!isCompanyAdmin &&
-        (visitorTeam ||
-            (accessCategory != CrmEmployeeCategory.bpo &&
-                accessCategory != CrmEmployeeCategory.sales))) {
-      await SecureStorageService.clearAll();
-      await ref.read(apiClientProvider).clearAuth(notifySessionExpired: false);
-      PermissionManager.instance.clear();
-      if (mounted) {
-        _showAccessRestrictedUI(
-          title: kCrmAccessRestrictedTitle,
-          message: kCrmAccessRestrictedMessage,
+          title: 'Customer login only',
+          message: kCustomerAppAccessMessage,
         );
       }
       return;
@@ -1508,7 +1460,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
   void _openRegistration() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const EmployeeRegistrationView(),
+        builder: (_) => const CustomerRegistrationView(),
       ),
     );
   }
@@ -1551,12 +1503,11 @@ class _LoginViewState extends ConsumerState<LoginView> {
 
   // Login Method Selector Pills
   Widget _buildLoginMethodSelector() {
-    final isEmployee = _currentRole == MobileUserRole.employee;
     final stackMethods = MediaQuery.sizeOf(context).width < 360;
     final pills = <Widget>[
       _buildMethodPill(
         method: LoginMethod.email,
-        label: isEmployee ? 'Email / EMP-ID' : 'Email',
+        label: 'Email',
         icon: Remix.mail_line,
       ),
       _buildMethodPill(
@@ -1673,11 +1624,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
             Padding(
               padding: const EdgeInsets.only(left: 4),
               child: Text(
-                _currentRole == MobileUserRole.customer
-                    ? 'e.g. customer@example.com'
-                    : (_acceptsEmployeeCode()
-                        ? 'e.g. employee@company.com or EMP-004'
-                        : 'e.g. employee@company.com'),
+                'e.g. customer@example.com',
                 style: GoogleFonts.outfit(
                   fontSize: 11.5,
                   color: const Color(0xFF94A3B8),
