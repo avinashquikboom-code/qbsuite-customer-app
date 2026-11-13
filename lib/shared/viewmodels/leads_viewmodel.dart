@@ -166,6 +166,8 @@ class LeadsViewModel extends Notifier<AsyncValue<List<LeadModel>>> {
     _page = 1;
     final keepVisible = state.asData?.value;
     state = sameQuery && keepVisible != null
+        // Keeps the current list visible while the same query reloads.
+        // ignore: invalid_use_of_internal_member
         ? const AsyncValue<List<LeadModel>>.loading().copyWithPrevious(state)
         : const AsyncValue.loading();
     try {
