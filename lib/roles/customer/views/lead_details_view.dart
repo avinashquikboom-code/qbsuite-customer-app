@@ -938,7 +938,7 @@ targetStageName=${targetStage.name}
     if (!_canScheduleVisits) {
       AppToast.error(
         context,
-        'Access denied: Missing required permission [VISITS:CREATE]',
+        'You do not have permission to schedule visits.',
       );
       return;
     }

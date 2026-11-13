@@ -46,7 +46,7 @@ Future<LeadModel?> showScheduleVisitBottomSheet(
   if (!canSchedule) {
     AppToast.error(
       context,
-      'Access denied: Missing required permission [VISITS:CREATE]',
+      'You do not have permission to schedule visits.',
     );
     return Future.value(null);
   }
@@ -273,7 +273,7 @@ class _ScheduleVisitBottomSheetState
     if (!canSchedule) {
       AppToast.error(
         context,
-        'Access denied: Missing required permission [VISITS:CREATE]',
+        'You do not have permission to schedule visits.',
       );
       return;
     }

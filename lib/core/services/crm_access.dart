@@ -109,6 +109,7 @@ bool isVisitorTeamAccount({
 bool isTelecallerOrBpoStaff({
   String? role,
   String? crmCategory,
+  String? designation,
   bool isCrmEligible = false,
 }) {
   final cat = (crmCategory ?? '').trim().toUpperCase();
@@ -116,6 +117,8 @@ bool isTelecallerOrBpoStaff({
   final raw = (role ?? '').trim().toUpperCase();
   if (raw.contains('BPO')) return true;
   if (_isTelesales(raw)) return true;
+  final desig = (designation ?? '').trim().toUpperCase();
+  if (desig.contains('BPO') || _isTelesales(desig)) return true;
   return isCrmEligible && cat != 'VISITOR' && cat != 'SALES';
 }
 

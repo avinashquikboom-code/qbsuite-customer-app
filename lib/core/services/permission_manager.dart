@@ -187,7 +187,11 @@ class PermissionState {
       canCreate(AppModule.visits) ||
       hasPermission("VISITS", "CREATE") ||
       hasPermission("employee.visits.create") ||
-      hasPermission("LEADS", "SCHEDULE_VISIT");
+      hasPermission("LEADS", "SCHEDULE_VISIT") ||
+      hasPermission("LEADS", "SCHEDULE") ||
+      hasPermission("employee.leads.schedule_visit") ||
+      hasPermission("LEADS", "CHANGE_STAGE") ||
+      hasPermission("employee.leads.change_stage");
   bool get canStartVisit =>
       hasPermission("VISITS", "START") ||
       hasPermission("employee.visits.start") ||

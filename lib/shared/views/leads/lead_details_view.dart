@@ -214,7 +214,7 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
     if (!_canScheduleVisits) {
       AppToast.error(
         context,
-        'Access denied: Missing required permission [VISITS:CREATE]',
+        'You do not have permission to schedule visits.',
       );
       return;
     }
@@ -280,7 +280,10 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
     }
 
     if (_isVisitDoneStage(targetStage) && !_isVisitor) {
-      AppToast.error(context, 'Only a visitor employee can mark this lead as Visit Done.');
+      AppToast.error(
+        context,
+        'Visit Done must be completed by the assigned visitor employee.',
+      );
       return;
     }
 
@@ -418,9 +421,8 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, idx) {
                     final stage = stages[idx];
-                    if (!_isVisitor && _isVisitDoneStage(stage)) {
-                      return const SizedBox.shrink();
-                    }
+                    final visitDoneLocked =
+                        !_isVisitor && _isVisitDoneStage(stage);
                     final isCurrent = currentStage != null
                         ? stage.id == currentStage.id ||
                               stage.key.toUpperCase() ==
@@ -433,6 +435,13 @@ class _LeadDetailsViewState extends ConsumerState<LeadDetailsView>
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
+                          if (visitDoneLocked) {
+                            AppToast.error(
+                              context,
+                              'Visit Done must be completed by the assigned visitor employee.',
+                            );
+                            return;
+                          }
                           if (_isVisitor &&
                               stage.key.toUpperCase() != 'VISIT_DONE' &&
                               !stage.name.toUpperCase().contains('VISIT DONE')) {
