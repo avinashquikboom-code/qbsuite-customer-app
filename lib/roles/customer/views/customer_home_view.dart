@@ -73,22 +73,9 @@ class CustomerHomeView extends ConsumerWidget {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Icon(
-                  Remix.building_2_fill,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset('assets/images/app_logo.png', width: 32, height: 32, fit: BoxFit.contain),
             ),
             const SizedBox(width: 10),
             Flexible(

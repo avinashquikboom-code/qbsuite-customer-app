@@ -329,20 +329,9 @@ class _CustomerInfluencersListViewState
           // Back button if popped, else logo
           Navigator.canPop(context)
               ? const BackButton(color: AppColors.textPrimary)
-              : Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Remix.building_2_fill,
-                      color: AppColors.primaryDark,
-                      size: 20,
-                    ),
-                  ),
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset('assets/images/app_logo.png', width: 34, height: 34, fit: BoxFit.contain),
                 ),
           const SizedBox(width: 10),
           Expanded(

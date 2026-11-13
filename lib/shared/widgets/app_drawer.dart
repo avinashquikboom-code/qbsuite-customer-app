@@ -570,31 +570,9 @@ class AppDrawer extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Icon(
-                    Remix.flashlight_fill,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.asset('assets/images/app_logo.png', width: 44, height: 44, fit: BoxFit.contain),
               ),
               const SizedBox(width: 12),
               Column(

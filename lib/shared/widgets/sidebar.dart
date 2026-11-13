@@ -96,22 +96,9 @@ class Sidebar extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, AppColors.primaryDark],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Remix.flashlight_fill,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset('assets/images/app_logo.png', width: 44, height: 44, fit: BoxFit.contain),
                 ),
                 const SizedBox(width: 14),
                 Column(

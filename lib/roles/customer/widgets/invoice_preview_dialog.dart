@@ -150,22 +150,9 @@ class InvoicePreviewDialog extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primary, AppColors.primaryDark],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Remix.flashlight_fill,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset('assets/images/app_logo.png', width: 36, height: 36, fit: BoxFit.contain),
                       ),
                       const SizedBox(width: 10),
                       Column(

@@ -20,7 +20,7 @@ class AuthHeader extends StatelessWidget {
         SizedBox(
           width: 100,
           child: Image.asset(
-            'assets/images/logo.png',
+            'assets/images/app_logo.png',
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) => Center(
               child: Container(
