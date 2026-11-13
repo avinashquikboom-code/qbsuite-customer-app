@@ -70,12 +70,26 @@ class CustomerHomeView extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
+        titleSpacing: 16,
         title: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.asset('assets/images/app_logo.png', width: 32, height: 32, fit: BoxFit.contain),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryDark],
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Remix.building_2_fill,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
             const SizedBox(width: 10),
             Flexible(
@@ -84,26 +98,26 @@ class CustomerHomeView extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'QB Suite Customer',
+                    'QB Suite',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                       height: 1.1,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     'CUSTOMER WORKSPACE',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.outfit(
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primaryDark,
                       letterSpacing: 1.2,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -111,14 +125,11 @@ class CustomerHomeView extends ConsumerWidget {
           ],
         ),
         actions: [
-          // Animated bell — only this widget rebuilds per animation frame.
           if (perms.customerCan('CUSTOMER_NOTIFICATIONS', 'VIEW'))
             AnimatedNotificationBell(
+              iconSize: 24,
               onPressed: () {
-                // Refresh notification state when the user opens the screen.
-                ref
-                    .read(employeeNotificationProvider.notifier)
-                    .loadNotifications();
+                ref.read(employeeNotificationProvider.notifier).loadNotifications();
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const NotificationsView()),
@@ -126,9 +137,9 @@ class CustomerHomeView extends ConsumerWidget {
               },
             ),
           IconButton(
-            icon: const Icon(Remix.menu_line, color: AppColors.textPrimary),
             tooltip: 'Open Menu',
             onPressed: onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
+            icon: const Icon(Remix.menu_line, color: AppColors.textPrimary, size: 24),
           ),
           const SizedBox(width: 4),
         ],
