@@ -15,6 +15,7 @@ import 'package:quickboom_crm_customer/roles/customer/viewmodels/leads_viewmodel
 import 'package:quickboom_crm_customer/roles/customer/viewmodels/lead_stages_viewmodel.dart';
 
 typedef VisitScheduledCallback = FutureOr<void> Function(LeadModel lead);
+typedef ScheduleVisitEmployeeLoader = Future<Response<dynamic>> Function(int page);
 
 typedef ScheduleVisitManageVisitFn = Future<LeadModel?> Function(
   String id, {
@@ -69,12 +70,14 @@ class ScheduleVisitBottomSheet extends ConsumerStatefulWidget {
   final LeadModel lead;
   final VisitScheduledCallback? onVisitScheduled;
   final ScheduleVisitManageVisitFn? manageVisit;
+  final ScheduleVisitEmployeeLoader? loadEmployees;
 
   const ScheduleVisitBottomSheet({
     super.key,
     required this.lead,
     this.onVisitScheduled,
     this.manageVisit,
+    this.loadEmployees,
   });
 
   @override
@@ -169,7 +172,9 @@ class _ScheduleVisitBottomSheetState
       var page = 1;
       var totalPages = 1;
       do {
-        final res = await ref.read(apiClientProvider).get('/employees', queryParameters: {'status': 'ACTIVE', 'page': page, 'limit': 100});
+        final res = widget.loadEmployees != null
+            ? await widget.loadEmployees!(page)
+            : await ref.read(apiClientProvider).get('/employees', queryParameters: {'status': 'ACTIVE', 'page': page, 'limit': 100});
         final raw = res.data;
         final data = raw is Map && raw['data'] is Map ? raw['data'] : raw;
         final items = data is List ? data : data is Map ? (data['items'] ?? data['data'] ?? data['employees']) : null;
@@ -320,8 +325,10 @@ class _ScheduleVisitBottomSheetState
       setState(() => _isSubmitting = false);
 
       if (updated != null) {
-        ref.read(leadsProvider.notifier).refreshCurrentList();
-        ref.read(leadStagesProvider.notifier).refresh();
+        if (widget.loadEmployees == null) {
+          ref.read(leadsProvider.notifier).refreshCurrentList();
+          ref.read(leadStagesProvider.notifier).refresh();
+        }
         try {
           await widget.onVisitScheduled?.call(updated);
         } catch (refreshError) {
