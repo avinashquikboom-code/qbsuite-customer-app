@@ -7,6 +7,53 @@ import 'package:quickboom_crm_customer/core/services/secure_storage_service.dart
 import 'package:quickboom_crm_customer/shared/models/data_capture_model.dart';
 import 'package:quickboom_crm_customer/shared/repositories/local_data_capture_repository.dart';
 
+@visibleForTesting
+void applyImportOutcomesToCapturedPlaces(
+  List<CapturedBusiness> places,
+  List<dynamic> rawRecords,
+) {
+  final completedCaptureIds = <String>{};
+  final completedGoogleIds = <String>{};
+  for (final record in rawRecords.whereType<Map>()) {
+    if (record['imported'] != true && record['duplicate'] != true) {
+      continue;
+    }
+    final captureId = record['sourceRecordId']?.toString().trim();
+    final googleId = record['googlePlaceId']?.toString().trim();
+    if (captureId != null && captureId.isNotEmpty) {
+      completedCaptureIds.add(captureId);
+    }
+    if (googleId != null && googleId.isNotEmpty) {
+      completedGoogleIds.add(googleId);
+    }
+  }
+
+  for (final place in places) {
+    final completed =
+        completedGoogleIds.contains(place.googlePlaceId) ||
+        (place.sourceRecordId != null &&
+            completedCaptureIds.contains(place.sourceRecordId)) ||
+        (place.id != null && completedCaptureIds.contains(place.id.toString()));
+    if (completed) {
+      place.isImported = true;
+      place.isSelected = false;
+    }
+  }
+}
+
+String dataCaptureImportError(Object error) {
+  if (error is DioException && error.response?.data is Map) {
+    final body = Map<String, dynamic>.from(error.response!.data as Map);
+    final message = body['message'];
+    if (message is String && message.trim().isNotEmpty) return message.trim();
+    final errors = body['errors'];
+    if (errors is List && errors.isNotEmpty) {
+      return errors.map((item) => item.toString()).join(' ');
+    }
+  }
+  return error.toString().replaceFirst('Exception: ', '').trim();
+}
+
 /// Existing extraction client. Saved-record CRUD uses DataCaptureRecordsService.
 class DataCaptureService {
   final ApiClient? _providedApiClient;
@@ -36,7 +83,9 @@ class DataCaptureService {
       if (to != null) 'to': to.toUtc().toIso8601String(),
     };
     if (kDebugMode) {
-      debugPrint('[DATA_CAPTURE_HISTORY] GET /data-capture/history params=$query');
+      debugPrint(
+        '[DATA_CAPTURE_HISTORY] GET /data-capture/history params=$query',
+      );
     }
     final response = await _apiClient.get(
       '/data-capture/history',
@@ -101,6 +150,7 @@ class DataCaptureService {
     required String jobId,
     List<String>? placeIds,
     List<CapturedBusiness>? places,
+    Map<String, Map<String, String>>? independentFieldsById,
     dynamic assignedToId,
     dynamic employeeId,
   }) async {
@@ -115,6 +165,18 @@ class DataCaptureService {
         final payload = <String, dynamic>{
           if (jobId.isNotEmpty) 'jobId': jobId,
           if (placeIds != null && placeIds.isNotEmpty) 'placeIds': placeIds,
+          if (places != null && places.isNotEmpty)
+            'places': places.map((place) {
+              final key = place.id?.toString() ?? place.googlePlaceId;
+              return <String, dynamic>{
+                if (place.id != null) 'id': place.id,
+                if (place.googlePlaceId.isNotEmpty)
+                  'googlePlaceId': place.googlePlaceId,
+                if (place.sourceRecordId != null)
+                  'sourceRecordId': place.sourceRecordId,
+                'independentFields': independentFieldsById?[key] ?? const {},
+              };
+            }).toList(),
         };
 
         debugPrint('''
@@ -178,11 +240,8 @@ leadId=$leadId
 status=SUCCESS
 ''');
 
-          if (places != null) {
-            for (final p in places) {
-              p.isImported = true;
-              p.isSelected = false;
-            }
+          if (places != null && rawRecords is List) {
+            applyImportOutcomesToCapturedPlaces(places, rawRecords);
           }
 
           final summaryMap = Map<String, dynamic>.from(dataObj);
@@ -208,6 +267,7 @@ status=FAILED
         debugPrint(
           '[DATA_CAPTURE_SERVICE] importToLeads error details: ${e.response?.data}',
         );
+        throw StateError(dataCaptureImportError(e));
       }
       rethrow;
     }
@@ -224,6 +284,7 @@ status=FAILED
     dynamic id, {
     String? captureRequestId,
     CapturedBusiness? business,
+    Map<String, String>? independentFields,
     dynamic assignedToId,
     dynamic employeeId,
   }) async {
@@ -265,6 +326,7 @@ status=FAILED
       final payload = <String, dynamic>{
         if (captureRequestId != null && captureRequestId.trim().isNotEmpty)
           'captureRequestId': captureRequestId.trim(),
+        'independentFields': ?independentFields,
       };
 
       final res = await _apiClient.post(

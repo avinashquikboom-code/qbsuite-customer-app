@@ -86,8 +86,10 @@ class _RecordsState extends ConsumerState<DataCaptureRecordsScreen> {
                     try {
                       for (final id in selected.keys) {
                         final record = _data?.records.where((r) => r.id == id).firstOrNull;
+                        final selectedName = selected[id]?.trim() ?? '';
                         if (record != null && record.status != 'VALIDATED' &&
-                            record.fields['isImported'] != true) {
+                            record.fields['isImported'] != true &&
+                            (record.businessName.trim().isNotEmpty || selectedName.isNotEmpty)) {
                           await _service.status(id, 'validate');
                         }
                       }

@@ -22,7 +22,6 @@ class EmployeeProfileData {
   final String status;
   final String joiningDate;
   final String employmentType;
-  final String manager;
   final Map<String, dynamic>? bankDetails;
   final Map<String, dynamic>? salaryStructure;
 
@@ -44,7 +43,6 @@ class EmployeeProfileData {
     this.status = 'ACTIVE',
     this.joiningDate = '',
     this.employmentType = 'Full-Time',
-    this.manager = '',
     this.bankDetails,
     this.salaryStructure,
   });
@@ -119,7 +117,6 @@ class EmployeeProfileData {
       status: (json['status'] ?? 'ACTIVE').toString().trim(),
       joiningDate: (json['joiningDate'] ?? '').toString().trim(),
       employmentType: (json['employmentType'] ?? 'Full-Time').toString().trim(),
-      manager: (json['manager'] ?? json['reportingManager'] ?? '').toString().trim(),
       bankDetails: parsedBank,
       salaryStructure: json['salaryStructure'] is Map
           ? Map<String, dynamic>.from(json['salaryStructure'])

@@ -482,7 +482,7 @@ class _SalarySummaryViewState extends ConsumerState<SalarySummaryView> {
                     child: Column(
                       children: [
                         _breakdownRow('Loss of Pay (LOP) Deductions', _formatCur(deductions?['lopDeduction']), isWarning: (deductions?['lopDeduction'] ?? 0) > 0),
-                        _breakdownRow('Late Arrival Deductions', _formatCur(deductions?['lateDeductions']), isWarning: (deductions?['lateDeductions'] ?? 0) > 0),
+                        _breakdownRow('Late Mark', _formatCur(deductions?['lateDeductions']), isWarning: (deductions?['lateDeductions'] ?? 0) > 0),
                         _breakdownRow('Provident Fund (PF)', _formatCur(deductions?['pf'])),
                         _breakdownRow('Employee State Insurance (ESI)', _formatCur(deductions?['esi'])),
                         _breakdownRow('Professional Tax (PT)', _formatCur(deductions?['professionalTax'])),

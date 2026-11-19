@@ -33,6 +33,7 @@ class _DataCaptureResultsScreenState
   final DataCaptureService _service = DataCaptureService();
   late List<CapturedBusiness> _places;
   bool _isImporting = false;
+  final Map<String, Map<String, String>> _independentFields = {};
 
   @override
   void initState() {
@@ -41,6 +42,9 @@ class _DataCaptureResultsScreenState
   }
 
   int get _selectedCount => _places.where((p) => p.isSelected).length;
+
+  String _placeKey(CapturedBusiness place) =>
+      place.id?.toString() ?? place.googlePlaceId;
 
   void _selectAll(bool select) {
     setState(() {
@@ -67,6 +71,25 @@ class _DataCaptureResultsScreenState
       return;
     }
 
+    final missingBusinessNames = selectedPlaces.where(
+      (place) => (_independentFields[_placeKey(place)]?['businessName'] ?? '')
+          .trim()
+          .isEmpty,
+    );
+    if (missingBusinessNames.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Enter an independently supplied CRM business name for each selected record before importing.',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isImporting = true);
 
     try {
@@ -79,6 +102,15 @@ class _DataCaptureResultsScreenState
         jobId: widget.jobRecord.jobId,
         placeIds: selectedIds,
         places: selectedPlaces,
+        independentFieldsById: {
+          for (final place in selectedPlaces)
+            _placeKey(place): {
+              for (final entry
+                  in (_independentFields[_placeKey(place)] ?? {}).entries)
+                if (entry.value.trim().isNotEmpty)
+                  entry.key: entry.value.trim(),
+            },
+        },
       );
 
       if (!mounted) return;
@@ -265,7 +297,7 @@ class _DataCaptureResultsScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              err.toString().replaceAll('Exception: ', ''),
+              dataCaptureImportError(err),
               style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
             ),
             backgroundColor: AppColors.error,
@@ -465,6 +497,17 @@ class _DataCaptureResultsScreenState
                 final place = _places[idx];
                 return ResultBusinessCard(
                   business: place,
+                  independentFields:
+                      _independentFields[_placeKey(place)] ?? const {},
+                  onIndependentFieldChanged: (field, value) {
+                    setState(() {
+                      _independentFields.putIfAbsent(
+                        _placeKey(place),
+                        () => {},
+                      );
+                      _independentFields[_placeKey(place)]![field] = value;
+                    });
+                  },
                   onToggleSelect: (val) {
                     setState(() {
                       place.isSelected = val ?? false;

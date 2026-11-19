@@ -83,12 +83,14 @@ class DataCaptureRecordsService {
     }
     // Match the existing extraction client's import contract. The API resolves
     // placeIds as saved Data Capture IDs, for both single and bulk imports.
-    final payload = {
+    final payload = <String, dynamic>{
       'placeIds': selectedIds.map((id) => id.toString()).toList(),
+      'places': selectedIds.map((id) => <String, dynamic>{'id': id}).toList(),
     };
     if (kDebugMode) {
       debugPrint('[DATA_CAPTURE_IMPORT_REQUEST] '
-          'endpoint=${AppUrl.dataCapture}/import-to-leads payload=$payload');
+          'endpoint=${AppUrl.dataCapture}/import-to-leads '
+          'selectedCount=${selectedIds.length} selectedIds=${selectedIds.toList()}');
     }
     var result = await _request(
       'POST',

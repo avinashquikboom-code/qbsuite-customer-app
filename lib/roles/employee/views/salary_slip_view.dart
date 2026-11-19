@@ -712,10 +712,6 @@ class _SalarySlipViewState extends ConsumerState<SalarySlipView> with WidgetsBin
     final location = (profile?.branch != null && profile!.branch.trim().isNotEmpty)
         ? profile.branch
         : (emp?['branch'] ?? 'Head Office');
-    final reportingManager = (profile?.manager != null &&
-            profile!.manager.trim().isNotEmpty)
-        ? profile.manager
-        : (emp?['manager'] ?? 'Direct Reporting');
 
     return Container(
       decoration: BoxDecoration(
@@ -801,8 +797,8 @@ class _SalarySlipViewState extends ConsumerState<SalarySlipView> with WidgetsBin
                   _buildTwoColumnRow(
                     leftLabel: 'DEPARTMENT',
                     leftValue: department.toString(),
-                    rightLabel: 'REPORTING MANAGER',
-                    rightValue: reportingManager.toString(),
+                    rightLabel: '',
+                    rightValue: '',
                   ),
                   if (profile?.salaryStructure != null) ...[
                     const SizedBox(height: 12),

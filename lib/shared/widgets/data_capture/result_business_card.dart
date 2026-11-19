@@ -11,8 +11,6 @@ import 'package:quickboom_crm_customer/core/theme/app_colors.dart';
 import 'package:quickboom_crm_customer/shared/models/data_capture_model.dart';
 import 'package:quickboom_crm_customer/shared/services/data_capture_service.dart';
 
-
-
 import 'package:quickboom_crm_customer/shared/models/lead_model.dart';
 import 'package:quickboom_crm_customer/shared/viewmodels/leads_viewmodel.dart';
 import 'package:quickboom_crm_customer/shared/viewmodels/lead_stages_viewmodel.dart';
@@ -21,11 +19,15 @@ import 'package:quickboom_crm_customer/roles/employee/views/dashboard_view.dart'
 class ResultBusinessCard extends ConsumerStatefulWidget {
   final CapturedBusiness business;
   final ValueChanged<bool?> onToggleSelect;
+  final Map<String, String> independentFields;
+  final void Function(String field, String value) onIndependentFieldChanged;
 
   const ResultBusinessCard({
     super.key,
     required this.business,
     required this.onToggleSelect,
+    required this.independentFields,
+    required this.onIndependentFieldChanged,
   });
 
   @override
@@ -64,6 +66,13 @@ class _ResultBusinessCardState extends ConsumerState<ResultBusinessCard> {
 
   Future<void> _handleAddToLead() async {
     if (_isAdding || _isAdded) return;
+    if ((widget.independentFields['businessName'] ?? '').trim().isEmpty) {
+      AppToast.error(
+        context,
+        'Enter an independently supplied CRM business name before importing.',
+      );
+      return;
+    }
     setState(() => _isAdding = true);
 
     try {
@@ -158,6 +167,10 @@ companyId/tenantId: ${tenantId ?? 'N/A'}
         targetPlaceIdentifier,
         captureRequestId: captureId,
         business: business,
+        independentFields: {
+          for (final entry in widget.independentFields.entries)
+            if (entry.value.trim().isNotEmpty) entry.key: entry.value.trim(),
+        },
       );
 
       // Section 9: Duplicate handling
@@ -359,6 +372,59 @@ companyId/tenantId: ${tenantId ?? 'N/A'}
               ],
             ),
           ),
+
+          if (business.isSelected && !business.isImported)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 10),
+                title: Text(
+                  'Enter details for your CRM lead',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+                subtitle: Text(
+                  'Business name is required. Enter information from your own records.',
+                  style: GoogleFonts.outfit(fontSize: 11),
+                ),
+                children: [
+                  for (final field in const [
+                    ('businessName', 'Business name (required)'),
+                    ('phone', 'Phone'),
+                    ('email', 'Email'),
+                    ('website', 'Website'),
+                    ('address', 'Address'),
+                    ('city', 'City'),
+                    ('state', 'State'),
+                    ('country', 'Country'),
+                    ('pincode', 'Postal code'),
+                    ('category', 'Category'),
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TextFormField(
+                        initialValue: widget.independentFields[field.$1] ?? '',
+                        onChanged: (value) =>
+                            widget.onIndependentFieldChanged(field.$1, value),
+                        decoration: InputDecoration(
+                          labelText: field.$2,
+                          isDense: true,
+                          border: const OutlineInputBorder(),
+                        ),
+                        keyboardType: field.$1 == 'email'
+                            ? TextInputType.emailAddress
+                            : field.$1 == 'phone'
+                            ? TextInputType.phone
+                            : TextInputType.text,
+                      ),
+                    ),
+                ],
+              ),
+            ),
 
           // ── Address ─────────────────────────────────────────────────
           if (business.address.isNotEmpty)
