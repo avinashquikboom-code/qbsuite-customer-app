@@ -81,7 +81,6 @@ void main() {
       status: 'ACTIVE',
       joiningDate: '2026-01-01',
       employmentType: 'FULL_TIME',
-      manager: 'Manager',
     );
 
     return ProviderScope(
