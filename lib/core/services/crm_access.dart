@@ -1,5 +1,5 @@
 /// CRM category returned by the employee login and profile APIs.
-enum CrmEmployeeCategory { bpo, visitor, sales, none }
+enum CrmEmployeeCategory { sales, visitor, none }
 
 const String kCrmAccessRestrictedTitle = 'Access Restricted';
 
@@ -8,13 +8,12 @@ const String kCustomerAppAccessMessage =
 
 const String kCrmAccessRestrictedMessage =
     'Your account is not authorized to access the QB Suite CRM application.\n\n'
-    'Visitor and Lead Visitor employees use the QB Suite Visitor app. CRM access is available to BPO and Sales employees.\n\n'
+    'Visitor and Lead Visitor employees use the QB Suite Visitor app. CRM access is available to Sales employees.\n\n'
     'Please contact your administrator if you believe this is a mistake.';
 
 CrmEmployeeCategory? parseCrmCategory(String? raw) {
   switch ((raw ?? '').trim().toUpperCase()) {
-    case 'BPO':
-      return CrmEmployeeCategory.bpo;
+    case 'BPO': // Legacy category accepted during staggered rollout.
     case 'VISITOR':
       return CrmEmployeeCategory.visitor;
     case 'SALES':
@@ -72,7 +71,7 @@ CrmEmployeeCategory classifyCrmEmployee({
     return CrmEmployeeCategory.visitor;
   }
   if (departmentBpo || designationBpo || roleBpo || telesales) {
-    return CrmEmployeeCategory.bpo;
+    return CrmEmployeeCategory.sales;
   }
   if (sales) {
     return CrmEmployeeCategory.sales;
@@ -113,12 +112,12 @@ bool isTelecallerOrBpoStaff({
   bool isCrmEligible = false,
 }) {
   final cat = (crmCategory ?? '').trim().toUpperCase();
-  if (cat == 'BPO') return true;
+  if (cat == 'BPO' || cat == 'SALES') return true;
   final raw = (role ?? '').trim().toUpperCase();
-  if (raw.contains('BPO')) return true;
+  if (raw.contains('BPO') || raw.contains('SALES')) return true;
   if (_isTelesales(raw)) return true;
   final desig = (designation ?? '').trim().toUpperCase();
-  if (desig.contains('BPO') || _isTelesales(desig)) return true;
+  if (desig.contains('BPO') || desig.contains('SALES') || _isTelesales(desig)) return true;
   return isCrmEligible && cat != 'VISITOR' && cat != 'SALES';
 }
 

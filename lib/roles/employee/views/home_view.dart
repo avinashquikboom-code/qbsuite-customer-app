@@ -236,11 +236,9 @@ class _EmployeeHomeViewState extends ConsumerState<EmployeeHomeView>
       backendCategory: rbacPerms.crmCategory,
     );
     final isVisitor = crmCategory == CrmEmployeeCategory.visitor;
-    final isBpoTeam = crmCategory == CrmEmployeeCategory.bpo;
-    final isSalesTeam = crmCategory == CrmEmployeeCategory.sales;
+    final isSalesCrmTeam = crmCategory == CrmEmployeeCategory.sales;
     final isProductionTeam =
-        !isBpoTeam &&
-        !isSalesTeam &&
+        !isSalesCrmTeam &&
         !isVisitor &&
         (permsState.permissions.hasSsmWorkPermission ||
             rbacPerms.canViewMyWork ||
@@ -270,7 +268,7 @@ class _EmployeeHomeViewState extends ConsumerState<EmployeeHomeView>
             roleName.contains('TEAM LEAD'));
 
     final canViewCalendar =
-        !isBpoTeam && isProductionTeam && rbacPerms.canViewCalendar;
+        !isSalesCrmTeam && isProductionTeam && rbacPerms.canViewCalendar;
 
     final hasAnyPermittedWidget =
         isVisitor ||
@@ -289,8 +287,8 @@ class _EmployeeHomeViewState extends ConsumerState<EmployeeHomeView>
             (authState.role == UserRole.employee ||
                 authState.userRole == 'EMPLOYEE'));
 
-    final showBpoHomeSkeleton =
-        isBpoTeam &&
+    final showSalesHomeSkeleton =
+        isSalesCrmTeam &&
         rbacPerms.permissions.isEmpty &&
         (rbacPerms.isLoading || !rbacPerms.isInitialized) &&
         rbacPerms.error == null;
@@ -468,7 +466,7 @@ class _EmployeeHomeViewState extends ConsumerState<EmployeeHomeView>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 0. Welcome Greeting
-              if (showBpoHomeSkeleton)
+              if (showSalesHomeSkeleton)
                 _buildBpoGreetingSkeleton()
               else
                 Row(
@@ -550,7 +548,7 @@ class _EmployeeHomeViewState extends ConsumerState<EmployeeHomeView>
               ]
               // Only permission initialization gates the whole workspace.
               // Each permitted section handles its own data loading/errors.
-              else if (showBpoHomeSkeleton) ...[
+              else if (showSalesHomeSkeleton) ...[
                 _buildBpoLoadingState(
                   showAttendance: true,
                   showQuota: !isProductionTeam,
@@ -607,14 +605,14 @@ class _EmployeeHomeViewState extends ConsumerState<EmployeeHomeView>
 
                   // 2. Lead Generation Quota Card
                   if ((canViewLeads || canViewDataCapture) &&
-                      isBpoTeam &&
+                      isSalesCrmTeam &&
                       !isProductionTeam) ...[
                     const LeadLimitCard(),
                     const SizedBox(height: 16),
                   ],
 
                   // 3. Lead Pipeline Card (Below Lead Quota)
-                  if (canViewLeads && isBpoTeam && !isProductionTeam) ...[
+                  if (canViewLeads && isSalesCrmTeam && !isProductionTeam) ...[
                     _buildLeadPipelineCard(context),
                     const SizedBox(height: 16),
                   ],

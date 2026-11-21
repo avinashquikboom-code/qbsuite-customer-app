@@ -279,11 +279,9 @@ class _DashboardViewState extends ConsumerState<DashboardView>
       backendCategory: rbacPerms.crmCategory,
     );
     final isVisitor = crmCategory == CrmEmployeeCategory.visitor;
-    final isBpoTeam = crmCategory == CrmEmployeeCategory.bpo;
-    final isSalesTeam = crmCategory == CrmEmployeeCategory.sales;
+    final isSalesCrmTeam = crmCategory == CrmEmployeeCategory.sales;
     final isProductionTeam =
-        !isBpoTeam &&
-        !isSalesTeam &&
+        !isSalesCrmTeam &&
         !isVisitor &&
         (permsState.permissions.hasSsmWorkPermission ||
             rbacPerms.canViewMyWork ||
@@ -350,25 +348,23 @@ class _DashboardViewState extends ConsumerState<DashboardView>
       ),
 
       // CRM-eligible BPO staff take precedence over generic work/team-lead roles.
-      if (isBpoTeam || isSalesTeam) ...[
-        if (isBpoTeam &&
-            (rbacPerms.canViewDataCapture ||
-                permsState.hasWorkPermission('data_capture') ||
-                permsState.hasWorkPermission('datacapture') ||
-                isBpoTeam))
+      if (isSalesCrmTeam &&
+          (rbacPerms.canViewDataCapture || rbacPerms.canViewLeads || rbacPerms.canViewCustomers)) ...[
+        if (rbacPerms.canViewDataCapture)
           const _DashboardTabItem(
             label: 'Data Capture',
             icon: Remix.add_circle_line,
             activeIcon: Remix.add_circle_fill,
             page: DataCaptureHomeScreen(),
           ),
-        const _DashboardTabItem(
+        if (rbacPerms.canViewLeads)
+          const _DashboardTabItem(
           label: 'Leads',
           icon: Remix.user_search_line,
           activeIcon: Remix.user_search_fill,
           page: LeadsView(),
         ),
-        if (isBpoTeam)
+        if (rbacPerms.canViewCustomers)
           const _DashboardTabItem(
             label: 'Customers',
             icon: Remix.building_2_line,

@@ -197,12 +197,11 @@ class AppDrawer extends ConsumerWidget {
       role: rbacPerms.role,
       backendCategory: rbacPerms.crmCategory,
     );
-    final isBpoEmployee = crmCategory == CrmEmployeeCategory.bpo;
-    final isSalesEmployee = crmCategory == CrmEmployeeCategory.sales;
+    final isSalesCrmEmployee = crmCategory == CrmEmployeeCategory.sales;
     final isVisitorEmployee = crmCategory == CrmEmployeeCategory.visitor;
 
-    final hasLeadsAccess = isBpoEmployee || isSalesEmployee || rbacPerms.canViewLeads;
-    final hasCustomersAccess = isBpoEmployee;
+    final hasLeadsAccess = isSalesCrmEmployee && rbacPerms.canViewLeads;
+    final hasCustomersAccess = isSalesCrmEmployee && rbacPerms.canViewCustomers;
     final hasPackagesAccess = rbacPerms.canViewPackages;
     final hasAttendanceAccess = rbacPerms.canViewAttendance;
     final hasLeaveAccess = rbacPerms.canViewLeave;
@@ -211,7 +210,7 @@ class AppDrawer extends ConsumerWidget {
     final hasCommissionAccess = rbacPerms.canViewCommission;
     final hasVisitsAccess = isVisitorEmployee;
     final hasSettingsAccess = rbacPerms.canView(AppModule.settings);
-    final hasDataCaptureAccess = isBpoEmployee;
+    final hasDataCaptureAccess = isSalesCrmEmployee && rbacPerms.canViewDataCapture;
     final hasDashboardAccess = rbacPerms.canViewDashboard;
     final hasCrmAccess =
         (hasDataCaptureAccess || hasLeadsAccess || hasCustomersAccess);

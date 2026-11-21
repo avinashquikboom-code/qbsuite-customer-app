@@ -681,12 +681,10 @@ class _LoginViewState extends ConsumerState<LoginView> {
                     employeeMap['designation']['crmMobileAccess'] == true)));
     final bool isCrmEligible = crmCategory == null
         ? legacyCrmEligible
-        : crmCategory == CrmEmployeeCategory.bpo ||
-              crmCategory == CrmEmployeeCategory.sales;
+        : crmCategory == CrmEmployeeCategory.sales;
     final String? crmCategoryValue = switch (crmCategory) {
-      CrmEmployeeCategory.bpo => 'BPO',
-      CrmEmployeeCategory.visitor => 'VISITOR',
       CrmEmployeeCategory.sales => 'SALES',
+      CrmEmployeeCategory.visitor => 'VISITOR',
       CrmEmployeeCategory.none => 'NONE',
       null => null,
     };
@@ -751,9 +749,7 @@ class _LoginViewState extends ConsumerState<LoginView> {
       } catch (e) {
         debugPrint('[AUTH] Employee permission pre-fetch error: $e');
         if (ref.read(permissionManagerProvider).isLoading) {
-          final defaults = AuthService.defaultEmployeeCapabilities(
-            isCrm: isCrmEligible,
-          );
+          final defaults = AuthService.defaultEmployeeCapabilities();
           PermissionManager.instance.setPermissions(
             defaults,
             role: rawRole,

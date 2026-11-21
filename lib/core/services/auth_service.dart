@@ -118,7 +118,7 @@ class UserData {
                     employeeJson['designation']['crmMobileAccess'] == true)));
     final bool crmAccess = parsedCategory == null
         ? legacyCrmFlag
-        : parsedCategory == CrmEmployeeCategory.bpo ||
+        : parsedCategory == CrmEmployeeCategory.sales ||
               parsedCategory == CrmEmployeeCategory.sales;
 
     return UserData(
@@ -137,9 +137,8 @@ class UserData {
       employeeId: empId,
       isCrmEligible: crmAccess,
       crmCategory: switch (parsedCategory) {
-        CrmEmployeeCategory.bpo => 'BPO',
-        CrmEmployeeCategory.visitor => 'VISITOR',
         CrmEmployeeCategory.sales => 'SALES',
+        CrmEmployeeCategory.visitor => 'VISITOR',
         CrmEmployeeCategory.none => 'NONE',
         null => null,
       },
@@ -316,7 +315,7 @@ class AuthService {
   }
 
   /// Standard baseline permissions for an authenticated employee
-  static List<UserPermission> defaultEmployeeCapabilities({bool isCrm = false}) {
+  static List<UserPermission> defaultEmployeeCapabilities() {
     return <UserPermission>[
       for (final module in [
         'DASHBOARD',
@@ -332,8 +331,6 @@ class AuthService {
         'NOTIFICATIONS',
         'PROFILE',
         'SETTINGS',
-        'DATA_CAPTURE',
-        if (isCrm) ...['LEADS', 'CUSTOMERS'],
         'VISITS',
         'EXPENSES',
         'LOAN',
@@ -385,18 +382,13 @@ class AuthService {
     final crmCategory = parseCrmCategory(
       (profile['crmCategory'] ?? employee?['crmCategory'])?.toString(),
     );
-    final isCrm = crmCategory == null
-        ? profile['crmMobileAccess'] == true
-        : crmCategory == CrmEmployeeCategory.bpo ||
-              crmCategory == CrmEmployeeCategory.sales;
     final crmCategoryValue = switch (crmCategory) {
-      CrmEmployeeCategory.bpo => 'BPO',
-      CrmEmployeeCategory.visitor => 'VISITOR',
       CrmEmployeeCategory.sales => 'SALES',
+      CrmEmployeeCategory.visitor => 'VISITOR',
       CrmEmployeeCategory.none => 'NONE',
       null => null,
     };
-    final capabilities = defaultEmployeeCapabilities(isCrm: isCrm);
+    final capabilities = defaultEmployeeCapabilities();
 
     final employeeIdStr =
         employee?['id']?.toString() ?? profile['employeeId']?.toString();
@@ -413,7 +405,7 @@ class AuthService {
       role: profile['accountType']?.toString() ?? 'EMPLOYEE',
       employeeId: employeeIdStr,
       designationId: employee?['designationId']?.toString(),
-      isCrmEligible: isCrm,
+      isCrmEligible: crmCategory == CrmEmployeeCategory.sales,
       crmCategory: crmCategoryValue,
     );
     return capabilities;

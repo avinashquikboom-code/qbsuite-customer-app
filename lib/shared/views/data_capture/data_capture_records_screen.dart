@@ -51,7 +51,8 @@ class _RecordsState extends ConsumerState<DataCaptureRecordsScreen> {
     if (_importing ||
         _confirmingImport ||
         _selected.isEmpty ||
-        !ref.read(permissionManagerProvider).canEdit('DATA_CAPTURE')) {
+        (!ref.read(permissionManagerProvider).canEdit('DATA_CAPTURE') ||
+            !ref.read(permissionManagerProvider).canCreate('LEADS'))) {
       return;
     }
     _confirmingImport = true;
@@ -80,7 +81,11 @@ class _RecordsState extends ConsumerState<DataCaptureRecordsScreen> {
                 FilledButton(
                   style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
                   onPressed: submitting ? null : () async {
-                    if (submitting || !ref.read(permissionManagerProvider).canEdit('DATA_CAPTURE')) return;
+                    if (submitting ||
+                        !ref.read(permissionManagerProvider).canEdit('DATA_CAPTURE') ||
+                        !ref.read(permissionManagerProvider).canCreate('LEADS')) {
+                      return;
+                    }
                     updateDialog(() => submitting = true);
                     setState(() => _importing = true);
                     try {
@@ -146,8 +151,7 @@ class _RecordsState extends ConsumerState<DataCaptureRecordsScreen> {
       if (!mounted) return;
       setState(() => _importing = false);
       if ((imported > 0 || duplicates > 0) &&
-          (ref.read(permissionManagerProvider).canViewLeads ||
-                    ref.read(permissionManagerProvider).isCrmEligible)) {
+          (ref.read(permissionManagerProvider).canViewLeads)) {
         final successMsg = imported > 0
             ? '$imported ${imported == 1 ? 'record' : 'records'} imported successfully!${unsuccessful.isEmpty ? '' : ' $failed failed, $skipped skipped. ${unsuccessful.map((r) => r['reason']).join('; ')}'}'
             : 'Selected businesses are already in Leads.';
@@ -205,8 +209,7 @@ class _RecordsState extends ConsumerState<DataCaptureRecordsScreen> {
               child: const Text('Close'),
             ),
             if ((imported > 0 || duplicates > 0) &&
-                (ref.read(permissionManagerProvider).canViewLeads ||
-                    ref.read(permissionManagerProvider).isCrmEligible))
+                (ref.read(permissionManagerProvider).canViewLeads))
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 child: const Text('View Leads'),
@@ -639,7 +642,7 @@ class _RecordsState extends ConsumerState<DataCaptureRecordsScreen> {
   @override
   Widget build(BuildContext context) {
     final permissions = ref.watch(permissionManagerProvider);
-    final canImport = permissions.canEdit('DATA_CAPTURE');
+    final canImport = permissions.canEdit('DATA_CAPTURE') && permissions.canCreate('LEADS');
     final canCreate = permissions.canCreate('DATA_CAPTURE');
     return PopScope(
       canPop: !_importing && _selected.isEmpty,
@@ -1278,7 +1281,8 @@ class _RecordState extends ConsumerState<DataCaptureRecordScreen> {
         _loading ||
         _record == null ||
         _isImported ||
-        !ref.read(permissionManagerProvider).canEdit('DATA_CAPTURE')) {
+        (!ref.read(permissionManagerProvider).canEdit('DATA_CAPTURE') ||
+            !ref.read(permissionManagerProvider).canCreate('LEADS'))) {
       return;
     }
     setState(() {
@@ -1325,8 +1329,7 @@ class _RecordState extends ConsumerState<DataCaptureRecordScreen> {
               ? 'Business imported to Leads successfully.'
               : 'This business is already in Leads.',
         );
-        if ((ref.read(permissionManagerProvider).canViewLeads ||
-                    ref.read(permissionManagerProvider).isCrmEligible)) {
+        if ((ref.read(permissionManagerProvider).canViewLeads)) {
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const LeadsView()),
           );

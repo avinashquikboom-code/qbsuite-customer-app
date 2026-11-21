@@ -48,15 +48,13 @@ class PermissionGuardedView extends ConsumerWidget {
     if ((bpoOnly || visitorOnly) && !categoryKnown && profileAsync.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final categoryAllowed = normModule == AppModule.leads
-        ? crmCategory == CrmEmployeeCategory.bpo ||
-              crmCategory == CrmEmployeeCategory.sales ||
-              permState.canViewLeads
-        : bpoOnly
-        ? crmCategory == CrmEmployeeCategory.bpo
+    final salesModuleAllowed = crmCategory == CrmEmployeeCategory.sales &&
+        permState.hasPermission(normModule, action);
+    final categoryAllowed = bpoOnly
+        ? salesModuleAllowed
         : visitorOnly
         ? crmCategory == CrmEmployeeCategory.visitor
-        : true;
+        : false;
     if ((bpoOnly || visitorOnly) && categoryAllowed) {
       return child;
     }
@@ -112,7 +110,7 @@ class PermissionGuardedView extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 bpoOnly || visitorOnly
-                    ? "CRM is available only to BPO and Visitor employees. This screen is not available for your department."
+                    ? "CRM access requires an authorized Sales or Visitor role. This screen is not available for your department."
                     : "You do not have permission to access the $moduleTitle module. Contact your administrator if you need access.",
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
