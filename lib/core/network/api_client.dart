@@ -18,7 +18,7 @@ enum RefreshResultStatus { success, authFailed, networkError }
 
 /// Centralized Dio HTTP client for QuikBoom CRM with master debug logging and resilient session handling.
 class ApiClient {
-  static void Function()? onSessionExpired;
+  static void Function(String reason)? onSessionExpired;
 
   static final ApiClient _instance = ApiClient._internal();
   factory ApiClient() => _instance;
@@ -262,9 +262,15 @@ class ApiClient {
               tokenExpSec != null &&
               tokenExpSec <=
                   (DateTime.now().millisecondsSinceEpoch ~/ 1000 + 30);
+          if (!isAuthEndpoint && tokenExpSec != null) {
+            debugPrint(
+              '[AUTH_TOKEN] endpoint=${options.path} expiresAt=${DateTime.fromMillisecondsSinceEpoch(tokenExpSec * 1000).toUtc().toIso8601String()}',
+            );
+          }
 
           if (!isAuthEndpoint &&
-              (isExpiringSoon || tokenExpired) &&
+              (isExpiringSoon || tokenExpired || _token == null) &&
+              _refreshToken != null &&
               options.extra['__retried'] != true) {
             final (status, refreshed) = await _refreshSession();
             if (requestGeneration != _sessionGeneration) {
@@ -277,7 +283,9 @@ class ApiClient {
               );
             }
             if (status != RefreshResultStatus.success || refreshed == null) {
-              if (status == RefreshResultStatus.authFailed) await clearAuth();
+              if (status == RefreshResultStatus.authFailed) {
+                await clearAuth(reason: 'refresh_token_rejected');
+              }
               return handler.reject(_refreshFailure(options, status));
             }
             _token = refreshed;
@@ -415,13 +423,16 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
               ? DateTime.now().millisecondsSinceEpoch - start
               : 0;
 
+          final isAuthEndpoint = isAuthPath(error.requestOptions.path);
           AppLogger.apiError(
             method: error.requestOptions.method,
             url: '${error.requestOptions.baseUrl}${error.requestOptions.path}',
             statusCode: error.response?.statusCode,
             message: error.message ?? 'Unknown Dio error (${durationMs}ms)',
             responseData: error.response?.data,
-            error: error.error ?? error,
+            // Do not stringify Dio exceptions: their RequestOptions may carry
+            // Authorization headers even for otherwise safe API failures.
+            error: isAuthEndpoint ? null : 'DioExceptionType.${error.type.name}',
             stackTrace: error.stackTrace,
             queryParameters: error.requestOptions.queryParameters,
           );
@@ -442,19 +453,33 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
             debugPrint('httpStatus=${error.response?.statusCode ?? "none"}');
           }
 
-          final isAuthEndpoint = isAuthPath(error.requestOptions.path);
           final alreadyRetried =
               error.requestOptions.extra['__retried'] == true;
 
+          final responseCode = _responseCode(error.response?.data);
+          final terminalAccountFailure = _isTerminalAccountFailure(
+            error.response?.data,
+          );
+          if (terminalAccountFailure) {
+            debugPrint(
+              '[SESSION_AUTH_FAILURE] endpoint=${error.requestOptions.path} status=${error.response?.statusCode} code=$responseCode',
+            );
+            await clearAuth(reason: responseCode ?? 'account_disabled');
+            return handler.next(error);
+          }
+
           if (error.response?.statusCode == 401 && !isAuthEndpoint) {
             final options = error.requestOptions;
+            debugPrint(
+              '[SESSION_AUTH_FAILURE] endpoint=${options.path} status=401 retry=${alreadyRetried ? "yes" : "no"}',
+            );
             if (options.extra['__sessionGeneration'] != _sessionGeneration) {
               return handler.next(error);
             }
 
-            // Retried once and still 401: Clear auth state and signal session expired
+            // A protected endpoint can still return 401 for endpoint-specific
+            // reasons. Keep the session unless refresh itself was rejected.
             if (alreadyRetried) {
-              await clearAuth();
               return handler.next(error);
             }
 
@@ -474,7 +499,7 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
                   refreshed == null ||
                   refreshed.trim().isEmpty) {
                 if (status == RefreshResultStatus.authFailed) {
-                  await clearAuth();
+                  await clearAuth(reason: 'refresh_token_rejected');
                 }
                 return handler.next(
                   status == RefreshResultStatus.networkError
@@ -536,6 +561,10 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
         }
       }
 
+      debugPrint(
+        '[TOKEN_REFRESH] endpoint=${resp.requestOptions.path} status=${resp.statusCode ?? "none"}',
+      );
+
       if (resp.statusCode != null &&
           resp.statusCode! >= 200 &&
           resp.statusCode! < 300 &&
@@ -580,25 +609,58 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
       if (status == 401 || status == 403) {
         debugPrint('[TOKEN_REFRESH]');
         debugPrint('failed');
-        debugPrint('reason: refresh_token_invalid_or_expired (HTTP $status)');
-        return (RefreshResultStatus.authFailed, null);
+        final terminalAccountFailure = _isTerminalAccountFailure(
+          dioErr.response?.data,
+        );
+        if (status == 401 || terminalAccountFailure) {
+          debugPrint('endpoint=${AppUrl.refreshToken} status=$status');
+          debugPrint('reason: refresh_token_rejected');
+          return (RefreshResultStatus.authFailed, null);
+        }
+        debugPrint('endpoint=${AppUrl.refreshToken} status=$status');
+        debugPrint('reason: refresh_not_authorized_or_server_error');
+        return (RefreshResultStatus.networkError, null);
       } else {
         debugPrint('[TOKEN_REFRESH]');
         debugPrint('failed');
-        debugPrint('reason: network_or_server_error (${dioErr.message})');
+        debugPrint(
+          'endpoint=${AppUrl.refreshToken} status=${status ?? "none"} type=${dioErr.type.name}',
+        );
+        debugPrint('reason: temporary_refresh_failure');
         return (RefreshResultStatus.networkError, null);
       }
     } catch (e) {
       debugPrint('[TOKEN_REFRESH]');
       debugPrint('failed');
-      debugPrint('reason: unexpected_error ($e)');
+      debugPrint('reason: unexpected_error type=${e.runtimeType}');
       return (RefreshResultStatus.networkError, null);
     }
 
     debugPrint('[TOKEN_REFRESH]');
     debugPrint('failed');
-    debugPrint('reason: invalid_response_format');
-    return (RefreshResultStatus.authFailed, null);
+    debugPrint('endpoint=${AppUrl.refreshToken} status=invalid_response');
+    debugPrint('reason: malformed_refresh_response');
+    return (RefreshResultStatus.networkError, null);
+  }
+
+  static String? _responseCode(dynamic responseData) {
+    if (responseData is! Map) return null;
+    final nested = responseData['data'];
+    final data = nested is Map ? nested : responseData;
+    final value = data['code'] ?? responseData['code'];
+    return value?.toString().trim().toUpperCase();
+  }
+
+  static bool _isTerminalAccountFailure(dynamic responseData) {
+    const terminalCodes = {
+      'ACCOUNT_DISABLED',
+      'ACCOUNT_DEACTIVATED',
+      'ACCOUNT_BLOCKED',
+      'WORKSPACE_SUSPENDED',
+      'SESSION_REVOKED',
+      'REFRESH_TOKEN_REVOKED',
+    };
+    return terminalCodes.contains(_responseCode(responseData));
   }
 
   void setAuth(String token, String customerId, {String? refreshToken}) {
@@ -670,7 +732,7 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
         }
       }
     } catch (e) {
-      debugPrint('[API] initAuthFromStorage error: $e');
+      debugPrint('[API] initAuthFromStorage errorType=${e.runtimeType}');
     }
     return false;
   }
@@ -689,12 +751,32 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
       final (status, token) = await _refreshSession();
       return token;
     } catch (e) {
-      debugPrint('[API] Direct refresh error: $e');
+      debugPrint('[API] Direct refresh errorType=${e.runtimeType}');
       return null;
     }
   }
 
-  Future<void> clearAuth({bool notifySessionExpired = true}) async {
+  Future<(RefreshResultStatus, String?)> refreshAuthDirectlyWithStatus({
+    String? refreshToken,
+    String? customerId,
+  }) async {
+    if (refreshToken != null && refreshToken.trim().isNotEmpty) {
+      _refreshToken = refreshToken.trim();
+    }
+    if (customerId != null) _customerId = customerId;
+    try {
+      return await _refreshSession();
+    } catch (e) {
+      debugPrint('[TOKEN_REFRESH] endpoint=${AppUrl.refreshToken} status=none');
+      debugPrint('[TOKEN_REFRESH] result=network_error');
+      return (RefreshResultStatus.networkError, null);
+    }
+  }
+
+  Future<void> clearAuth({
+    bool notifySessionExpired = true,
+    String reason = 'unspecified',
+  }) async {
     _sessionGeneration++;
     _refreshFuture = null;
     _token = null;
@@ -703,10 +785,10 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
     try {
       await SecureStorageService.clearAll();
     } catch (e) {
-      debugPrint('[API] Error clearing auth storage: $e');
+      debugPrint('[API] Error clearing auth storageType=${e.runtimeType}');
     }
-    debugPrint('[API] Auth cleared (logout)');
-    if (notifySessionExpired) onSessionExpired?.call();
+    debugPrint('[SESSION_LOGOUT] reason=$reason');
+    if (notifySessionExpired) onSessionExpired?.call(reason);
   }
 
   // ── HTTP Methods ────────────────────────────────────────────────────────
@@ -725,7 +807,7 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
       debugPrint('[HEALTH_CHECK] SUCCESS after ${durationMs}ms');
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('[HEALTH_CHECK] FAILED: $e');
+      debugPrint('[HEALTH_CHECK] FAILED type=${e.runtimeType}');
       return false;
     }
   }
@@ -869,7 +951,7 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
 
       throw Exception('Unable to download the document. Please try again.');
     } catch (e) {
-      debugPrint('[DOCUMENT_ERROR] Unexpected error: $e');
+      debugPrint('[DOCUMENT_ERROR] Unexpected errorType=${e.runtimeType}');
       rethrow;
     }
   }

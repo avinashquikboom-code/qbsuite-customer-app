@@ -81,6 +81,10 @@ class CustomerAuthService {
     final cleanMobile = mobile.trim();
     final cleanEmail = email.trim().toLowerCase();
     final cleanCity = city.trim();
+    final cleanPassword = password?.trim() ?? '';
+    if (cleanPassword.length < 6) {
+      throw Exception('Please set a password with at least 6 characters.');
+    }
 
     try {
       String? fcmToken = NotificationService.instance.cachedFcmToken;
@@ -104,7 +108,7 @@ class CustomerAuthService {
           'email': cleanEmail,
           'phone': cleanMobile.isNotEmpty ? cleanMobile : null,
           'city': cleanCity.isNotEmpty ? cleanCity : null,
-          'password': password ?? '123456',
+          'password': cleanPassword,
           if (fcmToken != null && fcmToken.trim().isNotEmpty)
             'fcmToken': fcmToken.trim(),
           'platform': Platform.isIOS ? 'IOS' : 'ANDROID',

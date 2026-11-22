@@ -295,7 +295,7 @@ class AuthService {
       final response = await _apiClient.post(AppUrl.logout);
       return response.statusCode;
     } catch (e) {
-      debugPrint('[LOGOUT] Backend logout API call error: $e');
+      debugPrint('[LOGOUT] Backend logout errorType=${e.runtimeType}');
       return null;
     }
   }
@@ -308,7 +308,10 @@ class AuthService {
     try {
       PermissionManager.instance.clear();
       DataCaptureService.clearCache();
-      await _apiClient.clearAuth(notifySessionExpired: false);
+      await _apiClient.clearAuth(
+        notifySessionExpired: false,
+        reason: 'manual_logout',
+      );
     } catch (e) {
       rethrow;
     }

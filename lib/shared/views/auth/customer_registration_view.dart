@@ -37,6 +37,7 @@ class _CustomerRegistrationViewState
   String? _mobileError;
   String? _emailError;
   String? _cityError;
+  String? _passwordError;
 
   @override
   void dispose() {
@@ -99,6 +100,13 @@ class _CustomerRegistrationViewState
       } else {
         _cityError = null;
       }
+
+      if (_passwordCtrl.text.trim().length < 6) {
+        isValid = false;
+        _passwordError = 'Password must be at least 6 characters.';
+      } else {
+        _passwordError = null;
+      }
     });
 
     return isValid;
@@ -122,9 +130,7 @@ class _CustomerRegistrationViewState
         mobile: _mobileCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         city: _cityCtrl.text.trim(),
-        password: _passwordCtrl.text.trim().isNotEmpty
-            ? _passwordCtrl.text.trim()
-            : '123456',
+        password: _passwordCtrl.text.trim(),
       );
 
       if (mounted) {
@@ -323,14 +329,21 @@ class _CustomerRegistrationViewState
                     ),
                     const SizedBox(height: 16),
 
-                    // Optional Password Setup
+                    // Required Password Setup
                     _buildInputField(
                       controller: _passwordCtrl,
-                      label: 'Set Password (Optional)',
-                      hint: '•••••••• (Defaults to 123456)',
+                      label: 'Set Password *',
+                      hint: 'At least 6 characters',
                       icon: Remix.lock_2_line,
+                      errorText: _passwordError,
                       isPassword: true,
                       isPasswordVisible: _isPasswordVisible,
+                      onChanged: (_) {
+                        if (_passwordError != null &&
+                            _passwordCtrl.text.trim().length >= 6) {
+                          setState(() => _passwordError = null);
+                        }
+                      },
                       onTogglePassword: () {
                         setState(() {
                           _isPasswordVisible = !_isPasswordVisible;

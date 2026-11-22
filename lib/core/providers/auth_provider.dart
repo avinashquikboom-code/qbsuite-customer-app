@@ -140,6 +140,38 @@ bool _isTokenExpired(String token) {
   }
 }
 
+String? _tokenExpiryIso(String token) {
+  try {
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    final payload = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+    );
+    if (payload is Map && payload['exp'] is num) {
+      return DateTime.fromMillisecondsSinceEpoch(
+        (payload['exp'] as num).toInt() * 1000,
+        isUtc: true,
+      ).toIso8601String();
+    }
+  } catch (_) {}
+  return null;
+}
+
+UserRole? _roleFromToken(String? token) {
+  if (token == null || token.isEmpty) return null;
+  try {
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    final payload = jsonDecode(
+      utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+    );
+    if (payload is Map) {
+      return UserRole.tryParse(payload['role']?.toString());
+    }
+  } catch (_) {}
+  return null;
+}
+
 // Login state notifier
 class LoginStateNotifier extends Notifier<LoginState> {
   bool _isLoggingOut = false;
@@ -176,10 +208,7 @@ class LoginStateNotifier extends Notifier<LoginState> {
         SecureStorageService.getEmployeeId(),
         SecureStorageService.getCustomerId(),
         SecureStorageService.getCustomerName(),
-      ]).timeout(
-        const Duration(seconds: 4),
-        onTimeout: () => List.filled(9, null),
-      );
+      ]);
 
       final accessToken = storageResults[0];
       final refreshToken = storageResults[1];
@@ -193,7 +222,9 @@ class LoginStateNotifier extends Notifier<LoginState> {
 
       if (!ref.mounted) return;
 
-      final parsedRole = UserRole.tryParse(roleStr);
+      final parsedRole = UserRole.tryParse(roleStr) ??
+          _roleFromToken(accessToken) ??
+          _roleFromToken(refreshToken);
 
       debugPrint('[AUTH_STARTUP]');
       debugPrint(
@@ -220,9 +251,14 @@ class LoginStateNotifier extends Notifier<LoginState> {
       final hasStoredSession =
           (accessToken != null && accessToken.isNotEmpty) ||
           (refreshToken != null && refreshToken.isNotEmpty);
-      if (hasStoredSession && parsedRole != UserRole.customer) {
+      if (hasStoredSession &&
+          parsedRole != null &&
+          parsedRole != UserRole.customer) {
         await SecureStorageService.clearAll();
-        await apiClient.clearAuth(notifySessionExpired: false);
+        await apiClient.clearAuth(
+          notifySessionExpired: false,
+          reason: 'unsupported_stored_role',
+        );
         PermissionManager.instance.clear();
         if (!ref.mounted) return;
         state = state.copyWith(
@@ -238,6 +274,9 @@ class LoginStateNotifier extends Notifier<LoginState> {
       if (accessToken != null &&
           accessToken.isNotEmpty &&
           !_isTokenExpired(accessToken)) {
+        debugPrint(
+          '[AUTH_RESTORE] accessTokenExpiresAt=${_tokenExpiryIso(accessToken) ?? "unknown"}',
+        );
         debugPrint('[AUTH] token validation result: valid');
         debugPrint('[STARTUP] token validation completed');
         apiClient.setAuth(
@@ -333,14 +372,14 @@ class LoginStateNotifier extends Notifier<LoginState> {
         debugPrint('[AUTH] refresh started');
         debugPrint('[STARTUP] Refresh started');
 
-        final newAccessToken = await apiClient
-            .refreshAuthDirectly(
+        final (refreshStatus, newAccessToken) = await apiClient
+            .refreshAuthDirectlyWithStatus(
               refreshToken: refreshToken,
               customerId: customerId ?? '',
             )
             .timeout(
               const Duration(seconds: 4),
-              onTimeout: () => null,
+              onTimeout: () => (RefreshResultStatus.networkError, null),
             );
 
         if (!ref.mounted) return;
@@ -425,32 +464,14 @@ class LoginStateNotifier extends Notifier<LoginState> {
           debugPrint('status: authenticated');
           return;
         } else {
-          // If refresh failed (e.g. offline/network), check whether accessToken is genuinely still valid
-          bool isAccessExpired = false;
-          if (accessToken != null && accessToken.isNotEmpty) {
-            try {
-              final parts = accessToken.split('.');
-              if (parts.length == 3) {
-                final norm = base64Url.normalize(parts[1]);
-                final dec = utf8.decode(base64Url.decode(norm));
-                final map = jsonDecode(dec);
-                if (map is Map && map['exp'] is int) {
-                  final expSec = map['exp'] as int;
-                  final nowSec = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-                  isAccessExpired = expSec <= nowSec;
-                }
-              }
-            } catch (_) {}
-          }
-
-          if (!isAccessExpired &&
-              accessToken != null &&
-              accessToken.isNotEmpty) {
+          if (refreshStatus == RefreshResultStatus.networkError &&
+              ((accessToken?.isNotEmpty ?? false) ||
+                  refreshToken.isNotEmpty)) {
             debugPrint(
-              '[AUTH] Network offline during startup refresh; maintaining cached authenticated session with valid token',
+              '[AUTH_RESTORE] refresh unavailable; preserving saved session for retry',
             );
             apiClient.setAuth(
-              accessToken,
+              accessToken ?? '',
               customerId ?? '',
               refreshToken: refreshToken,
             );
@@ -497,13 +518,14 @@ class LoginStateNotifier extends Notifier<LoginState> {
             );
 
             debugPrint('[AUTH_RESTORE]');
-            debugPrint('status: authenticated');
+            debugPrint('status: authenticated_refresh_deferred');
             return;
           } else {
-            debugPrint(
-              '[AUTH] Refresh failed and stored access token is expired; clearing session',
+            debugPrint('[AUTH_RESTORE] refresh rejected; clearing confirmed session');
+            await apiClient.clearAuth(
+              notifySessionExpired: false,
+              reason: 'refresh_token_rejected',
             );
-            await apiClient.clearAuth(notifySessionExpired: false);
           }
         }
       }
@@ -531,7 +553,7 @@ class LoginStateNotifier extends Notifier<LoginState> {
       debugPrint('[AUTH_RESTORE]');
       debugPrint('status: unauthenticated');
     } catch (e) {
-      debugPrint('[STARTUP_ERROR] Exception in _checkLoginStatus: $e');
+      debugPrint('[STARTUP_ERROR] errorType=${e.runtimeType}');
       if (!ref.mounted) return;
       PermissionManager.instance.clear();
       ref.read(permissionManagerProvider.notifier).clear();
@@ -539,7 +561,7 @@ class LoginStateNotifier extends Notifier<LoginState> {
         isInitializing: false,
         isLoading: false,
         isLoggedIn: false,
-        startupError: 'Unable to restore session: $e',
+        startupError: 'Unable to restore the saved session. Please retry.',
         role: null,
         userRole: null,
         userEmail: null,
@@ -572,14 +594,14 @@ class LoginStateNotifier extends Notifier<LoginState> {
     }
   }
 
-  void handleSessionExpired() {
+  void handleSessionExpired(String reason) {
     if (_isLoggingOut) return;
     try {
       if (state.isLoggedIn) {
         debugPrint(
-          '[SESSION_EXPIRED] Transitioning to unauthenticated login state',
+          '[SESSION_EXPIRED] reason=$reason; transitioning to login',
         );
-        unawaited(logout());
+        unawaited(logout(reason: reason));
       }
     } catch (_) {}
   }
@@ -647,17 +669,17 @@ class LoginStateNotifier extends Notifier<LoginState> {
   }
 
   // Complete logout: API logout + token clearing + RBAC reset + provider invalidation + navigation reset
-  Future<void> logout() async {
+  Future<void> logout({String reason = 'manual_logout'}) async {
     if (_isLoggingOut) return;
     _isLoggingOut = true;
     try {
-      await _completeLogout();
+      await _completeLogout(reason);
     } finally {
       _isLoggingOut = false;
     }
   }
 
-  Future<void> _completeLogout() async {
+  Future<void> _completeLogout(String reason) async {
     final currentEmpId =
         state.employeeId ?? await SecureStorageService.getEmployeeId();
     debugPrint('[LOGOUT DEBUG]');
@@ -670,7 +692,7 @@ class LoginStateNotifier extends Notifier<LoginState> {
       EmployeeLiveTrackingService().stopTracking();
       await NotificationService.instance.unregisterToken();
     } catch (e) {
-      debugPrint('[LOGOUT DEBUG] FCM/Tracking stop error: $e');
+      debugPrint('[LOGOUT DEBUG] FCM/Tracking stop errorType=${e.runtimeType}');
     }
 
     // 2. Call backend logout API
@@ -688,9 +710,9 @@ class LoginStateNotifier extends Notifier<LoginState> {
     try {
       await ref
           .read(apiClientProvider)
-          .clearAuth(notifySessionExpired: false);
+          .clearAuth(notifySessionExpired: false, reason: reason);
     } catch (e) {
-      debugPrint('[LOGOUT DEBUG] Storage clear error: $e');
+      debugPrint('[LOGOUT DEBUG] Storage clear errorType=${e.runtimeType}');
     }
     debugPrint('[LOGOUT DEBUG]');
     debugPrint('Access token cleared: true');
@@ -732,7 +754,7 @@ class LoginStateNotifier extends Notifier<LoginState> {
       
       
     } catch (e) {
-      debugPrint('[LOGOUT DEBUG] Invalidate providers error: $e');
+      debugPrint('[LOGOUT DEBUG] Provider reset errorType=${e.runtimeType}');
     }
 
     // 6. Reset Auth State
@@ -778,7 +800,7 @@ class LoginStateNotifier extends Notifier<LoginState> {
         '[AUTH_PROVIDER] refreshPermissions completed: ${perms.length} perms, isCrmEligible: $isCrm',
       );
     } catch (e) {
-      debugPrint('[AUTH_PROVIDER] refreshPermissions error: $e');
+      debugPrint('[AUTH_PROVIDER] refreshPermissions errorType=${e.runtimeType}');
       final current = ref.read(permissionManagerProvider);
       if (current.permissions.isEmpty) {
         final cached = await SecureStorageService.getPermissions();
@@ -854,7 +876,9 @@ class LoginStateNotifier extends Notifier<LoginState> {
         '[AUTH_PROVIDER] refreshCustomerPermissions completed: ${PermissionManager.instance.currentState.permissions.length} perms',
       );
     } catch (e) {
-      debugPrint('[AUTH_PROVIDER] refreshCustomerPermissions error: $e');
+      debugPrint(
+        '[AUTH_PROVIDER] refreshCustomerPermissions errorType=${e.runtimeType}',
+      );
       if (ref.mounted &&
           ref.read(permissionManagerProvider).permissions.isEmpty) {
         permissionNotifier.setError(
