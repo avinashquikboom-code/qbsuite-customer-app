@@ -5,7 +5,6 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/secure_storage_service.dart';
 import '../utils/app_logger.dart';
 import 'app_url.dart';
@@ -36,6 +35,8 @@ class ApiClient {
 
   Future<(RefreshResultStatus, String?)>? _refreshFuture;
   int _sessionGeneration = 0;
+  int _credentialVersion = 0;
+  bool _credentialsNeedPersistence = false;
 
   /// Isolated clients let tests exercise the real interceptors without network.
   @visibleForTesting
@@ -206,13 +207,32 @@ class ApiClient {
           final isAuthEndpoint = isAuthPath(options.path);
 
           final requestGeneration = _sessionGeneration;
+          if (_credentialsNeedPersistence && _token != null && _refreshToken != null) {
+            try {
+              await SecureStorageService.saveTokens(accessToken: _token!, refreshToken: _refreshToken!);
+              _credentialsNeedPersistence = false;
+            } catch (error) {
+              return handler.reject(DioException(requestOptions: options, type: DioExceptionType.unknown, message: 'Unable to save the session. Please retry.', error: error));
+            }
+          }
+          final credentialVersion = _credentialVersion;
           // Read the persisted credential set together; a missing value must clear
           // stale in-memory credentials after logout, rather than resurrect them.
-          final credentials = await Future.wait([
-            SecureStorageService.getAccessToken(),
-            SecureStorageService.getRefreshToken(),
-            SecureStorageService.getCustomerId(),
-          ]);
+          List<String?> credentials;
+          try {
+            credentials = await Future.wait([
+              SecureStorageService.getAccessToken(),
+              SecureStorageService.getRefreshToken(),
+              SecureStorageService.getCustomerId(),
+            ]);
+          } catch (error) {
+            return handler.reject(DioException(
+              requestOptions: options,
+              type: DioExceptionType.unknown,
+              message: 'Unable to read the saved session. Please retry.',
+              error: error,
+            ));
+          }
           if (requestGeneration != _sessionGeneration) {
             return handler.reject(
               DioException(
@@ -222,9 +242,11 @@ class ApiClient {
               ),
             );
           }
-          _token = _cleanCredential(credentials[0]);
-          _refreshToken = _cleanCredential(credentials[1]);
-          _customerId = _cleanCredential(credentials[2]);
+          if (credentialVersion == _credentialVersion) {
+            _token = _cleanCredential(credentials[0]);
+            _refreshToken = _cleanCredential(credentials[1]);
+            _customerId = _cleanCredential(credentials[2]);
+          }
 
           // Proactive Token Expiration Check & Refresh before sending non-auth requests
           bool tokenExpired = false;
@@ -272,6 +294,7 @@ class ApiClient {
               (isExpiringSoon || tokenExpired || _token == null) &&
               _refreshToken != null &&
               options.extra['__retried'] != true) {
+            debugPrint('[AUTH_ACCESS_TOKEN_EXPIRED] refresh_required=true');
             final (status, refreshed) = await _refreshSession();
             if (requestGeneration != _sessionGeneration) {
               return handler.reject(
@@ -528,6 +551,7 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
   }
 
   Future<(RefreshResultStatus, String?)> _doRefreshToken() async {
+    debugPrint('[AUTH_REFRESH_STARTED]');
     debugPrint('[TOKEN_REFRESH]');
     debugPrint('started');
 
@@ -594,18 +618,23 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
             if (newRefreshToken != null && newRefreshToken.trim().isNotEmpty) {
               _refreshToken = newRefreshToken.trim();
             }
+            _credentialVersion++;
+            _credentialsNeedPersistence = true;
             await SecureStorageService.saveTokens(
               accessToken: cleanAccess,
               refreshToken: _refreshToken ?? '',
             );
+            _credentialsNeedPersistence = false;
             debugPrint('[TOKEN_REFRESH]');
             debugPrint('success');
+            debugPrint('[AUTH_REFRESH_SUCCESS]');
             return (RefreshResultStatus.success, cleanAccess);
           }
         }
       }
     } on DioException catch (dioErr) {
       final status = dioErr.response?.statusCode;
+      debugPrint('[AUTH_REFRESH_FAILED] status=${status ?? "none"} type=${dioErr.type.name}');
       if (status == 401 || status == 403) {
         debugPrint('[TOKEN_REFRESH]');
         debugPrint('failed');
@@ -665,6 +694,8 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
 
   void setAuth(String token, String customerId, {String? refreshToken}) {
     _sessionGeneration++;
+    _credentialVersion++;
+    _credentialsNeedPersistence = false;
     _token = token.trim();
     _customerId = customerId.trim();
     final normalizedRefreshToken = refreshToken?.trim();
@@ -708,15 +739,6 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
       var token = await SecureStorageService.getAccessToken();
       var refresh = await SecureStorageService.getRefreshToken();
       var custId = await SecureStorageService.getCustomerId() ?? '';
-
-      if (token == null || token.isEmpty) {
-        final prefs = await SharedPreferences.getInstance();
-        token = prefs.getString('access_token');
-        refresh ??= prefs.getString('refresh_token');
-        if (custId.isEmpty) {
-          custId = prefs.getString('customer_id') ?? '';
-        }
-      }
 
       if (token != null && token.isNotEmpty) {
         setAuth(token, custId, refreshToken: refresh);
@@ -778,6 +800,8 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
     String reason = 'unspecified',
   }) async {
     _sessionGeneration++;
+    _credentialVersion++;
+    _credentialsNeedPersistence = false;
     _refreshFuture = null;
     _token = null;
     _refreshToken = null;
@@ -788,6 +812,7 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
       debugPrint('[API] Error clearing auth storageType=${e.runtimeType}');
     }
     debugPrint('[SESSION_LOGOUT] reason=$reason');
+    debugPrint('[AUTH_LOGOUT_TRIGGERED] reason=$reason');
     if (notifySessionExpired) onSessionExpired?.call(reason);
   }
 

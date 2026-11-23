@@ -1217,6 +1217,13 @@ class NotificationService with WidgetsBindingObserver {
     final navigator = navigatorKey.currentState;
     if (navigator == null) return;
 
+    final workId = payload['workId'];
+    if (workId != null && int.tryParse(workId) != null &&
+        (payload['type'] == 'WORK_SUBMITTED' || payload['type'] == 'TASK_COMPLETED')) {
+      navigator.push(MaterialPageRoute(builder: (_) => NotificationsView(initialWorkId: workId)));
+      return;
+    }
+
     final leadId = payload['leadId'];
     if (leadId != null && leadId.isNotEmpty) {
       

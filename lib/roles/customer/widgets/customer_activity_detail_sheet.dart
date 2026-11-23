@@ -49,8 +49,15 @@ class _CustomerActivityDetailSheetState
   }
 
   Future<void> _approveWork() async {
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: const Text('Approve & Mark Done'),
+      content: const Text('Are you satisfied with the completed work? Approving this task will mark it as Done.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm Approval'))],
+    ));
+    if (confirmed != true || !mounted) return;
     setState(() => _isLoading = true);
     try {
+      await ref.read(apiClientProvider).post('/works/${_activity.id}/approve');
       final updated = _activity.copyWith(status: 'Completed');
       ref
           .read(companyAdminProvider.notifier)
@@ -159,9 +166,10 @@ class _CustomerActivityDetailSheetState
               setState(() => _isLoading = true);
               try {
                 final apiClient = ref.read(apiClientProvider);
+                final reviewing = _activity.status.toLowerCase().contains('review');
                 await apiClient.post(
-                  '/works/${_activity.id}/rework',
-                  data: {'reason': fb},
+                  '/works/${_activity.id}/${reviewing ? 'revision' : 'rework'}',
+                  data: reviewing ? {'feedback': fb} : {'reason': fb},
                 );
 
                 final updated = _activity.copyWith(
@@ -319,8 +327,7 @@ class _CustomerActivityDetailSheetState
     final statusLower = _activity.status.toLowerCase();
     final isUnderReview =
         statusLower.contains('review') ||
-        statusLower.contains('submitted') ||
-        statusLower.contains('progress');
+        statusLower.contains('submitted');
     final isCompleted =
         statusLower.contains('complete') || statusLower.contains('approve');
     final canReschedule = !isCompleted && !statusLower.contains('cancel');

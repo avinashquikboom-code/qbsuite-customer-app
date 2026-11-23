@@ -723,7 +723,7 @@ class EmployeeApiService {
           .toList();
     } catch (e) {
       debugPrint('[EMPLOYEE_API] getNotifications error: $e');
-      return [];
+      rethrow;
     }
   }
 

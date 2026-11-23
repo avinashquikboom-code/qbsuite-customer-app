@@ -17,19 +17,37 @@ import 'package:quickboom_crm_customer/core/utils/app_toast.dart';
 import 'package:quickboom_crm_customer/shared/widgets/common_dialog.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:quickboom_crm_customer/core/network/api_client.dart';
+import 'package:quickboom_crm_customer/roles/customer/widgets/customer_activity_detail_sheet.dart';
+import 'package:quickboom_company_admin/roles/company_admin/models/company_admin_models.dart';
 
 
 
 
 
 class NotificationsView extends ConsumerStatefulWidget {
-  const NotificationsView({super.key});
+  const NotificationsView({super.key, this.initialWorkId});
+  final String? initialWorkId;
 
   @override
   ConsumerState<NotificationsView> createState() => _NotificationsViewState();
 }
 
 class _NotificationsViewState extends ConsumerState<NotificationsView> {
+  Future<void> _openWork(Map<String, dynamic> item) async {
+    final data = item['data'];
+    final workId = data is Map ? data['workId']?.toString() : null;
+    if (workId == null || int.tryParse(workId) == null) return;
+    try {
+      final response = await ref.read(apiClientProvider).get('/works/$workId');
+      final body = response.data;
+      final work = body is Map && body['data'] is Map ? body['data'] : body;
+      if (work is! Map) throw StateError('Task details are unavailable.');
+      if (mounted) CustomerActivityDetailSheet.show(context, CustomerCalendarActivity.fromJson(Map<String, dynamic>.from(work)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open this task. It may no longer be available.')));
+    }
+  }
   static const _green = Color(0xFF22C55E);
   static const _ink = Color(0xFF172033);
   static const _muted = Color(0xFF718096);
@@ -42,6 +60,7 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(employeeNotificationProvider.notifier).loadNotifications();
+      if (widget.initialWorkId != null) _openWork({'data': {'workId': widget.initialWorkId}});
     });
     scroll.addListener(() {
       if (scroll.position.pixels > scroll.position.maxScrollExtent - 240) {
@@ -378,6 +397,9 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
           ref
               .read(employeeNotificationProvider.notifier)
               .markAsRead(item['id'].toString());
+        }
+        if (ref.read(loginStateProvider).role == UserRole.customer && (item['type'] == 'WORK_SUBMITTED' || item['type'] == 'TASK_COMPLETED')) {
+          _openWork(item);
         }
       },
       borderRadius: BorderRadius.circular(16),

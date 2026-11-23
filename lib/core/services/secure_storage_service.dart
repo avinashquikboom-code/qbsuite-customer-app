@@ -23,12 +23,15 @@ class SecureStorageService {
   static const String _permissionsKey = 'user_permissions';
 
   static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(resetOnError: true),
+    aOptions: AndroidOptions(resetOnError: false),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
   static const Duration _storageTimeout = Duration(seconds: 5);
   static Map<String, String>? _mockStorage;
+  static bool _isCredentialKey(String key) =>
+      key == _accessTokenKey || key == _refreshTokenKey ||
+      key == 'accessToken' || key == 'refreshToken';
 
   static bool get _isTestEnv {
     if (_mockStorage != null) return true;
@@ -54,6 +57,27 @@ class SecureStorageService {
   static Future<String?> _safeRead(String key) async {
     if (_isTestEnv && _mockStorage != null) {
       return _mockStorage![key];
+    }
+    if (_isCredentialKey(key)) {
+      try {
+        final value = await _storage.read(key: key).timeout(_storageTimeout);
+        if (value != null && value.trim().isNotEmpty && value != 'null') {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove(key);
+          return value.trim();
+        }
+        final prefs = await SharedPreferences.getInstance();
+        final legacy = prefs.getString(key);
+        if (legacy != null && legacy.trim().isNotEmpty && legacy != 'null') {
+          await _storage.write(key: key, value: legacy).timeout(_storageTimeout);
+          await prefs.remove(key);
+          return legacy.trim();
+        }
+        return null;
+      } catch (error) {
+        debugPrint('[AUTH_STORAGE_READ_FAILED] type=${error.runtimeType}');
+        rethrow;
+      }
     }
     // 1. Try Secure Storage
     try {
@@ -82,6 +106,12 @@ class SecureStorageService {
   static Future<void> _safeWrite(String key, String value) async {
     if (_isTestEnv && _mockStorage != null) {
       _mockStorage![key] = value;
+      return;
+    }
+    if (_isCredentialKey(key)) {
+      await _storage.write(key: key, value: value).timeout(_storageTimeout);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(key);
       return;
     }
 
@@ -132,14 +162,12 @@ class SecureStorageService {
     required String accessToken,
     required String refreshToken,
   }) async {
-    try {
-      await Future.wait([
+    await Future.wait([
         _safeWrite(_accessTokenKey, accessToken),
         _safeWrite(_refreshTokenKey, refreshToken),
         _safeWrite('accessToken', accessToken),
         _safeWrite('refreshToken', refreshToken),
       ]);
-    } catch (_) {}
 
     debugPrint('[AUTH_PERSISTENCE]');
     debugPrint('accessTokenStored: ${accessToken.isNotEmpty}');

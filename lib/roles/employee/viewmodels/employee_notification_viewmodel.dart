@@ -65,7 +65,7 @@ class EmployeeNotificationNotifier extends Notifier<NotificationState> {
       );
     } catch (e) {
       debugPrint('[NOTIFICATION_NOTIFIER] loadNotifications error: $e');
-      state = state.copyWith(isLoading: false, loadingMore: false);
+      state = state.copyWith(isLoading: false, loadingMore: false, errorMessage: 'Could not load notifications. Please try again.');
     }
   }
 

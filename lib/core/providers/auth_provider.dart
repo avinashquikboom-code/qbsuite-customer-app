@@ -385,6 +385,7 @@ class LoginStateNotifier extends Notifier<LoginState> {
         if (!ref.mounted) return;
 
         if (newAccessToken != null && newAccessToken.isNotEmpty) {
+          debugPrint('[AUTH_SESSION_RESTORED] method=refresh');
           debugPrint('[AUTH] refresh success');
           debugPrint('[STARTUP] token validation completed');
 
