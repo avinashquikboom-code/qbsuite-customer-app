@@ -10,67 +10,6 @@ import 'package:quickboom_crm_customer/core/theme/app_colors.dart';
 import 'package:quickboom_crm_customer/roles/customer/models/customer_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Blinking status dot widget
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _BlinkingDot extends StatefulWidget {
-  final Color color;
-
-  const _BlinkingDot({required this.color});
-
-  @override
-  State<_BlinkingDot> createState() => _BlinkingDotState();
-}
-
-class _BlinkingDotState extends State<_BlinkingDot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _opacity;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    );
-
-    _opacity = Tween<double>(
-      begin: 0.35,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
-
-    // Avoid infinite animation loop during widget tests to allow pumpAndSettle
-    final isTesting = WidgetsBinding.instance.runtimeType.toString().contains(
-      'Test',
-    );
-    if (!isTesting) {
-      _ctrl.repeat(reverse: true);
-    } else {
-      _ctrl.value = 1.0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _opacity,
-      child: Container(
-        width: 6,
-        height: 6,
-        decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // CustomerCard widget
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -146,34 +85,10 @@ class CustomerCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ── Status theming ────────────────────────────────────────────────────
-    final isActive = customer.isSubscriptionActive;
-
-    final Color statusBg;
-    final Color statusBorder;
-    final Color statusDot;
-    final Color statusText;
-    final String statusLabel;
-
-    if (customer.hasUpcomingCall) {
-      statusBg = const Color(0xFFFFF7ED);
-      statusBorder = const Color(0xFFFED7AA);
-      statusDot = const Color(0xFFF59E0B);
-      statusText = const Color(0xFFB45309);
-      statusLabel = 'Upcoming';
-    } else if (isActive) {
-      statusBg = const Color(0xFFECFDF5);
-      statusBorder = const Color(0xFFA7F3D0);
-      statusDot = const Color(0xFF10B981);
-      statusText = const Color(0xFF065F46);
-      statusLabel = 'Active';
-    } else {
-      statusBg = const Color(0xFFFEF2F2);
-      statusBorder = const Color(0xFFFECACA);
-      statusDot = const Color(0xFFEF4444);
-      statusText = const Color(0xFF991B1B);
-      statusLabel = 'Inactive';
-    }
+    final isExpired = customer.subscriptionEndDate != null &&
+        DateTime.tryParse(customer.subscriptionEndDate!) != null &&
+        DateTime.parse(customer.subscriptionEndDate!).isBefore(DateTime.now());
+    final isActive = customer.isSubscriptionActive || !isExpired;
 
     // ── Avatar initial ────────────────────────────────────────────────────
     final titleText = customer.displayTitle;
@@ -339,34 +254,6 @@ class CustomerCard extends ConsumerWidget {
                               ),
                             ),
                           ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-
-                    // Fixed-height, non-shrinking Status Badge with Blinking Dot
-                    Container(
-                      height: 26,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: statusBg,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: statusBorder),
-                      ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _BlinkingDot(color: statusDot),
-                          const SizedBox(width: 5),
-                          Text(
-                            statusLabel,
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: statusText,
-                            ),
-                          ),
                         ],
                       ),
                     ),
