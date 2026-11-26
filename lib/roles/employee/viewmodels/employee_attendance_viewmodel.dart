@@ -92,11 +92,6 @@ class AttendanceState {
       '06:30 PM';
   String get shiftTimeFormatted => '$shiftStartTime - $shiftEndTime';
 
-  int get gracePeriodMinutes =>
-      status.assignedShift?.gracePeriodMinutes ??
-      status.policy?.gracePeriodMinutes ??
-      15;
-
   double get expectedWorkingHours =>
       status.assignedShift?.durationHours ??
       status.policy?.minWorkingHours ??
@@ -138,65 +133,9 @@ class AttendanceState {
     );
   }
 
-  bool get isLateArrival {
-    if (status.status.rawStatus == 'LATE') return true;
-    if (status.status.punchInTime != null) {
-      try {
-        final punchIn = DateTime.parse(status.status.punchInTime!).toLocal();
-        final startParts = _parseTimeString(shiftStartTime);
-        if (startParts != null) {
-          final shiftStart = DateTime(
-            punchIn.year,
-            punchIn.month,
-            punchIn.day,
-            startParts[0],
-            startParts[1],
-          );
-          final diff = punchIn.difference(shiftStart).inMinutes;
-          return diff > gracePeriodMinutes;
-        }
-      } catch (_) {}
-    }
-    return false;
-  }
+  bool get isLateArrival => status.status.isLate;
 
-  int get lateByMinutes {
-    if (status.status.punchInTime != null) {
-      try {
-        final punchIn = DateTime.parse(status.status.punchInTime!).toLocal();
-        final startParts = _parseTimeString(shiftStartTime);
-        if (startParts != null) {
-          final shiftStart = DateTime(
-            punchIn.year,
-            punchIn.month,
-            punchIn.day,
-            startParts[0],
-            startParts[1],
-          );
-          final diff = punchIn.difference(shiftStart).inMinutes;
-          return diff > 0 ? diff : 0;
-        }
-      } catch (_) {}
-    }
-    return 0;
-  }
-
-  static List<int>? _parseTimeString(String timeStr) {
-    try {
-      final clean = timeStr.trim().toUpperCase();
-      final reg = RegExp(r'(\d+):(\d+)(?::\d+)?\s*(AM|PM)?');
-      final match = reg.firstMatch(clean);
-      if (match != null) {
-        var hour = int.parse(match.group(1)!);
-        final min = int.parse(match.group(2)!);
-        final mer = match.group(3);
-        if (mer == 'PM' && hour < 12) hour += 12;
-        if (mer == 'AM' && hour == 12) hour = 0;
-        return [hour, min];
-      }
-    } catch (_) {}
-    return null;
-  }
+  int get lateByMinutes => status.status.lateMinutes;
 
   AttendanceState copyWith({
     bool? isLoading,

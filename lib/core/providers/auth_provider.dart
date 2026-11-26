@@ -175,6 +175,7 @@ UserRole? _roleFromToken(String? token) {
 // Login state notifier
 class LoginStateNotifier extends Notifier<LoginState> {
   bool _isLoggingOut = false;
+  bool _isRestoring = false;
 
   @override
   LoginState build() {
@@ -189,6 +190,8 @@ class LoginStateNotifier extends Notifier<LoginState> {
 
   // Check if user is already logged in
   Future<void> _checkLoginStatus() async {
+    if (_isRestoring) return;
+    _isRestoring = true;
     try {
       debugPrint('[AUTH] initialization started');
       debugPrint('[STARTUP] Auth restoration started');
@@ -573,10 +576,13 @@ class LoginStateNotifier extends Notifier<LoginState> {
       );
       debugPrint('[AUTH_RESTORE]');
       debugPrint('status: unauthenticated (startup error)');
+    } finally {
+      _isRestoring = false;
     }
   }
 
   Future<void> retryInitialization() async {
+    if (_isRestoring) return;
     state = state.copyWith(
       isInitializing: true,
       isLoading: false,

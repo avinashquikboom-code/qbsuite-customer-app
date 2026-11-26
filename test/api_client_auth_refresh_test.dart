@@ -251,4 +251,32 @@ void main() {
     expect(await SecureStorageService.getRefreshToken(), oldRefresh);
     expect(expiredCalls, 0);
   });
+
+  test('an unauthenticated device-token request cannot trigger logout', () async {
+    SecureStorageService.setMockInitialValues({});
+    var expiredCalls = 0;
+    var refreshCalls = 0;
+    ApiClient.onSessionExpired = (_) => expiredCalls++;
+    final client = makeClient(
+      apiAdapter: _ResponseAdapter((_) => _json({'message': 'unauthorized'}, 401)),
+      refreshAdapter: _ResponseAdapter((_) { refreshCalls++; return _json({}, 401); }),
+    );
+    await expectLater(client.dio.delete('/notifications/device-token'), throwsA(isA<DioException>()));
+    expect(refreshCalls, 0);
+    expect(expiredCalls, 0);
+  });
+
+  test('missing refresh token does not clear an existing session', () async {
+    final oldAccess = _jwt(expiresAtSeconds: futureExp);
+    SecureStorageService.setMockInitialValues({'access_token': oldAccess, 'customer_id': '7', 'user_role': 'CUSTOMER'});
+    var expiredCalls = 0;
+    ApiClient.onSessionExpired = (_) => expiredCalls++;
+    final client = makeClient(
+      apiAdapter: _ResponseAdapter((_) => _json({'message': 'unauthorized'}, 401)),
+      refreshAdapter: _ResponseAdapter((_) => _json({}, 401)),
+    );
+    await expectLater(client.dio.get('/protected'), throwsA(isA<DioException>()));
+    expect(await SecureStorageService.getAccessToken(), oldAccess);
+    expect(expiredCalls, 0);
+  });
 }

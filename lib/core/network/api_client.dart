@@ -483,7 +483,10 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
           final terminalAccountFailure = _isTerminalAccountFailure(
             error.response?.data,
           );
-          if (terminalAccountFailure) {
+          final sentAuthorization = error.requestOptions.headers['Authorization']?.toString().trim();
+          if (terminalAccountFailure && !isAuthEndpoint &&
+              sentAuthorization != null && sentAuthorization.isNotEmpty &&
+              error.requestOptions.extra['__sessionGeneration'] == _sessionGeneration) {
             debugPrint(
               '[SESSION_AUTH_FAILURE] endpoint=${error.requestOptions.path} status=${error.response?.statusCode} code=$responseCode',
             );
@@ -493,6 +496,10 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
 
           if (error.response?.statusCode == 401 && !isAuthEndpoint) {
             final options = error.requestOptions;
+            if (sentAuthorization == null || sentAuthorization.isEmpty) {
+              debugPrint('[AUTH_UNAUTHENTICATED_REQUEST] endpoint=${options.path}');
+              return handler.next(error);
+            }
             debugPrint(
               '[SESSION_AUTH_FAILURE] endpoint=${options.path} status=401 retry=${alreadyRetried ? "yes" : "no"}',
             );
@@ -562,7 +569,7 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
       debugPrint('[TOKEN_REFRESH]');
       debugPrint('failed');
       debugPrint('reason: no_refresh_token');
-      return (RefreshResultStatus.authFailed, null);
+      return (RefreshResultStatus.networkError, null);
     }
 
     final generation = _sessionGeneration;
@@ -924,16 +931,17 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
       debugPrint('response size: ${rawData?.length ?? 0} bytes');
 
       if (statusCode == 200 && rawData != null && rawData.isNotEmpty) {
-        if (contentType.contains('application/json')) {
-          try {
-            final jsonString = String.fromCharCodes(rawData);
-            debugPrint(
-              '[DOCUMENT_ERROR] Backend returned JSON instead of PDF: $jsonString',
-            );
-            throw Exception(
-              'Server returned an error message instead of document file.',
-            );
-          } catch (_) {}
+        const signature = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+        final isPdf = rawData.length >= signature.length &&
+            List.generate(signature.length, (i) => rawData[i] == signature[i])
+                .every((matches) => matches);
+        if (!isPdf) {
+          throw const FormatException('The server did not return a valid PDF document.');
+        }
+        final tailStart = rawData.length > 1024 ? rawData.length - 1024 : 0;
+        final tail = String.fromCharCodes(rawData.sublist(tailStart));
+        if (!tail.contains('%%EOF')) {
+          throw const FormatException('The PDF download is incomplete. Please try again.');
         }
         return Uint8List.fromList(rawData);
       }
@@ -942,26 +950,14 @@ companyId: ${effectiveCompanyId ?? 'none'}''');
     } on DioException catch (dioErr) {
       final status = dioErr.response?.statusCode;
       final contentType = dioErr.response?.headers.value('content-type');
-      final errData = dioErr.response?.data;
-
-      String serverMsg = '';
-      if (errData is List<int>) {
-        try {
-          serverMsg = String.fromCharCodes(errData);
-        } catch (_) {}
-      } else if (errData != null) {
-        serverMsg = errData.toString();
-      }
-
       debugPrint('[DOCUMENT_ERROR]');
       debugPrint('type: $documentType');
       debugPrint('endpoint: $endpoint');
       debugPrint('status: $status');
       debugPrint('contentType: $contentType');
-      debugPrint('message: ${dioErr.message} | Server: $serverMsg');
+      debugPrint('errorType: ${dioErr.type}');
       if (documentType == 'AGREEMENT') {
         debugPrint('[AGREEMENT_DEBUG] status: $status');
-        debugPrint('[AGREEMENT_DEBUG] response: $serverMsg');
       }
 
       if (status == 401) {

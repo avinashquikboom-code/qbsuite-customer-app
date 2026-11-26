@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:remixicon/remixicon.dart';
@@ -96,7 +97,9 @@ class _CustomerActivityDetailSheetState
   }
 
   void _showRevisionDialog() {
-    final actionLabel = _activity.reworkActionLabel ?? 'Request Rework';
+    final actionLabel = _activity.status.toLowerCase().contains('review')
+        ? 'Request Changes'
+        : (_activity.reworkActionLabel ?? 'Request Rework');
     final feedbackCtrl = TextEditingController();
     showDialog(
       context: context,
@@ -130,6 +133,8 @@ class _CustomerActivityDetailSheetState
                 color: AppColors.textSecondary,
               ),
             ),
+            const SizedBox(height: 6),
+            Text('Assigned employee: ${_activity.assignedEmployee}', style: GoogleFonts.outfit(fontSize: 12, color: AppColors.textSecondary)),
             const SizedBox(height: 10),
             TextField(
               controller: feedbackCtrl,
@@ -193,7 +198,7 @@ class _CustomerActivityDetailSheetState
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        '$actionLabel submitted successfully. Creative team notified.',
+                        '$actionLabel submitted successfully.',
                         style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
                       ),
                       backgroundColor: const Color(0xFFD97706),
@@ -206,7 +211,9 @@ class _CustomerActivityDetailSheetState
                   setState(() => _isLoading = false);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to submit rework request: $e'),
+                      content: Text(e is DioException && e.response?.statusCode == 401
+                          ? 'Your session has expired. Please sign in again and retry.'
+                          : 'Failed to submit rework request: $e'),
                       backgroundColor: AppColors.error,
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -605,7 +612,7 @@ class _CustomerActivityDetailSheetState
                         color: Color(0xFFD97706),
                       ),
                       label: Text(
-                        'Request Revision',
+                        'Request Changes',
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFFD97706),

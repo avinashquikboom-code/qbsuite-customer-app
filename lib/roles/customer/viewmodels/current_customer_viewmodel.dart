@@ -353,7 +353,8 @@ final customerCalendarActivitiesForDateProvider =
       final apiClient = ref.watch(apiClientProvider);
       final customerIdFuture = ref.watch(currentCustomerIdProvider.future);
       await apiClient.ensureAuthLoaded();
-      if (apiClient.token == null || apiClient.token!.isEmpty) {
+      if ((apiClient.token == null || apiClient.token!.isEmpty) &&
+          (apiClient.refreshToken == null || apiClient.refreshToken!.isEmpty)) {
         throw StateError('Sign in to view your customer calendar.');
       }
       final customerId = await customerIdFuture;
@@ -479,7 +480,8 @@ final customerCalendarActivitiesForMonthProvider =
       final apiClient = ref.watch(apiClientProvider);
       final customerIdFuture = ref.watch(currentCustomerIdProvider.future);
       await apiClient.ensureAuthLoaded();
-      if (apiClient.token == null || apiClient.token!.isEmpty) {
+      if ((apiClient.token == null || apiClient.token!.isEmpty) &&
+          (apiClient.refreshToken == null || apiClient.refreshToken!.isEmpty)) {
         throw StateError('Sign in to view your customer calendar.');
       }
       final customerId = await customerIdFuture;
@@ -639,7 +641,8 @@ final customerCalendarActivitiesFor7DayWindowProvider =
       final apiClient = ref.watch(apiClientProvider);
       final customerIdFuture = ref.watch(currentCustomerIdProvider.future);
       await apiClient.ensureAuthLoaded();
-      if (apiClient.token == null || apiClient.token!.isEmpty) {
+      if ((apiClient.token == null || apiClient.token!.isEmpty) &&
+          (apiClient.refreshToken == null || apiClient.refreshToken!.isEmpty)) {
         throw StateError('Sign in to view your customer calendar.');
       }
       final customerId = await customerIdFuture;

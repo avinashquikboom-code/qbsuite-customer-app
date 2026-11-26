@@ -15,7 +15,6 @@ class SplashView extends ConsumerStatefulWidget {
 }
 
 class _SplashViewState extends ConsumerState<SplashView> {
-  Timer? _watchdogTimer;
   Timer? _fallbackTimer;
   bool _showFallback = false;
 
@@ -31,18 +30,11 @@ class _SplashViewState extends ConsumerState<SplashView> {
       }
     });
 
-    // Safety watchdog: automatically force completion if initialization takes more than 7 seconds
-    _watchdogTimer = Timer(const Duration(seconds: 7), () {
-      if (mounted) {
-        ref.read(loginStateProvider.notifier).forceCompleteInitialization();
-      }
-    });
   }
 
   @override
   void dispose() {
     _fallbackTimer?.cancel();
-    _watchdogTimer?.cancel();
     super.dispose();
   }
 
@@ -191,12 +183,10 @@ class _SplashViewState extends ConsumerState<SplashView> {
                 const SizedBox(height: 28),
                 TextButton(
                   onPressed: () {
-                    ref
-                        .read(loginStateProvider.notifier)
-                        .forceCompleteInitialization();
+                    ref.read(loginStateProvider.notifier).retryInitialization();
                   },
                   child: Text(
-                    'Continue to Login',
+                    'Retry session restore',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       color: AppTheme.primaryColor,

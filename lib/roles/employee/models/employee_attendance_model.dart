@@ -115,7 +115,7 @@ class AssignedShiftInfo {
       startTime: (json['startTime'] ?? '09:30 AM').toString(),
       endTime: (json['endTime'] ?? '06:30 PM').toString(),
       durationHours: (json['durationHours'] as num?)?.toDouble() ?? 9.0,
-      gracePeriodMinutes: (json['gracePeriodMinutes'] as num?)?.toInt() ?? 15,
+      gracePeriodMinutes: (json['gracePeriodMinutes'] as num?)?.toInt() ?? 0,
       breakDurationMinutes:
           (json['breakDurationMinutes'] as num?)?.toInt() ?? 60,
     );
@@ -174,7 +174,7 @@ class AttendancePolicyInfo {
     return AttendancePolicyInfo(
       officeStartTime: (json['officeStartTime'] ?? '09:30').toString(),
       officeEndTime: (json['officeEndTime'] ?? '18:30').toString(),
-      gracePeriodMinutes: (json['gracePeriodMinutes'] as num?)?.toInt() ?? 15,
+      gracePeriodMinutes: (json['gracePeriodMinutes'] as num?)?.toInt() ?? 0,
       minWorkingHours: (json['minWorkingHours'] as num?)?.toDouble() ?? 8.0,
     );
   }
@@ -298,6 +298,8 @@ class AttendanceStatusDetails {
   final bool hasWorkingHours;
   final bool hasBreakDuration;
   final String rawStatus;
+  final bool isLate;
+  final int lateMinutes;
 
   AttendanceStatusDetails({
     required this.isPunchedIn,
@@ -310,6 +312,8 @@ class AttendanceStatusDetails {
     this.hasWorkingHours = true,
     this.hasBreakDuration = true,
     required this.rawStatus,
+    this.isLate = false,
+    this.lateMinutes = 0,
   });
 
   factory AttendanceStatusDetails.fromJson(Map<String, dynamic> json) {
@@ -324,6 +328,8 @@ class AttendanceStatusDetails {
       hasWorkingHours: json['workingHours'] is num,
       hasBreakDuration: json['breakDuration'] is num,
       rawStatus: (json['rawStatus'] ?? 'NOT_MARKED').toString(),
+      isLate: json['isLate'] == true,
+      lateMinutes: (json['lateMinutes'] as num?)?.toInt() ?? 0,
     );
   }
 
