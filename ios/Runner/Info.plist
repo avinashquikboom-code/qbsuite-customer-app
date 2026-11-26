@@ -24,6 +24,37 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>qbcustomer</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tez</string>
+		<string>phonepe</string>
+		<string>paytmmp</string>
+		<string>paytm</string>
+		<string>credpay</string>
+		<string>bhim</string>
+		<string>upi</string>
+		<string>gpay</string>
+		<string>mobikwik</string>
+		<string>freecharge</string>
+		<string>amazonpay</string>
+		<string>axispay</string>
+		<string>icici</string>
+		<string>hdfc</string>
+		<string>sbiyono</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

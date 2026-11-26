@@ -37,6 +37,9 @@ class AppUrl {
   static const String customerOrders = '/subscriptions/orders';
   static const String razorpayOrder = '/payments/razorpay/order';
   static const String razorpayVerify = '/payments/razorpay/verify';
+  static const String appleIapProducts = '/payments/apple/products';
+  static const String appleIapVerify = '/payments/apple/verify';
+  static const String paymentStatus = '/payments/status';
   static const String paymentConfig = '/payments/config';
   static const String paymentsHistory = '/payments/history';
 

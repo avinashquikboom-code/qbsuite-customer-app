@@ -9,6 +9,7 @@ import '../models/influencer_model.dart';
 import '../services/customer_influencer_service.dart';
 import '../services/customer_subscription_service.dart';
 import '../viewmodels/customer_influencer_viewmodel.dart';
+import '../widgets/payment_status_view.dart';
 import 'customer_influencer_booking_confirmed_view.dart';
 
 /// Screen 5 — Customer Influencer Payment
@@ -160,16 +161,36 @@ class _CustomerInfluencerPaymentViewState
 
       if (!checkoutResult.isSuccess) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
+          final uiState = checkoutResult.isCancelled
+              ? PaymentUiState.cancelled
+              : checkoutResult.isPending
+              ? PaymentUiState.pending
+              : PaymentUiState.failed;
+          await PaymentStatusView.show(
+            context,
+            state: uiState,
+            title: uiState == PaymentUiState.cancelled
+                ? 'Payment Cancelled'
+                : uiState == PaymentUiState.pending
+                ? 'Payment Pending'
+                : 'Payment Failed',
+            message:
                 checkoutResult.errorMessage ?? 'Payment cancelled or failed.',
-              ),
-              backgroundColor: Colors.red.shade700,
-            ),
+            amount: booking.totalAmount,
+            paymentMethod: 'Razorpay',
+            onRetry: () {
+              Navigator.of(context).pop();
+              _processRazorpayPayment();
+            },
           );
         }
         return;
+      }
+
+      if (checkoutResult.paymentId == null || checkoutResult.signature == null) {
+        throw Exception(
+          'Incomplete payment response received from gateway. Please verify in Payment History.',
+        );
       }
 
       // 3. Authoritative HMAC Signature Verification on Server

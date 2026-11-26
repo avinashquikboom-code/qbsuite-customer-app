@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/services/apple_iap_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/app_toast.dart';
 import '../services/customer_ai_studio_service.dart';
 import '../viewmodels/customer_ai_studio_viewmodel.dart';
+import 'payment_status_view.dart';
 
 /// Opens the bottom sheet modal for purchasing AI credits
 void showAiCreditTopUpModal(BuildContext context) {
@@ -41,6 +44,43 @@ class _AiCreditTopUpModalState extends ConsumerState<AiCreditTopUpModal> {
     final service = ref.read(customerAiStudioServiceProvider);
 
     try {
+      if (Platform.isIOS) {
+        final iapService = ref.read(appleIapServiceProvider);
+        final productId = AppleIapService.creditPackProductId(_selectedCredits);
+        final iapResult = await iapService.purchaseProduct(
+          productId: productId,
+          purchaseType: 'AI_CREDITS',
+          credits: _selectedCredits,
+        );
+        if (!mounted) return;
+        if (iapResult.isSuccess) {
+          await ref.read(customerAiWalletProvider.notifier).refresh();
+          if (!mounted) return;
+          final nav = Navigator.of(context);
+          nav.pop();
+          await PaymentStatusView.show(
+            nav.context,
+            state: PaymentUiState.success,
+            title: 'AI Credits Added',
+            message: 'Successfully added $_selectedCredits AI credits via App Store.',
+            transactionId: iapResult.transactionId,
+            amount: iapResult.amount,
+            timestamp: iapResult.timestamp,
+            paymentMethod: 'Apple In-App Purchase (StoreKit 2)',
+            receiptNumber: iapResult.receiptNumber,
+          );
+        } else {
+          AppToast.error(
+            context,
+            iapResult.message ?? 'App Store purchase was not completed.',
+            title: iapResult.status == AppleIapStatus.cancelled
+                ? 'Purchase Cancelled'
+                : 'Purchase Failed',
+          );
+        }
+        return;
+      }
+
       final orderData = await service.createCreditOrder(
         credits: _selectedCredits,
         amount: _selectedPrice,

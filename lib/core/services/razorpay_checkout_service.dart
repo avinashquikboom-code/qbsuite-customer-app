@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../network/app_url.dart';
 
 final razorpayCheckoutServiceProvider = Provider<RazorpayCheckoutService>((
   ref,
@@ -10,8 +13,16 @@ final razorpayCheckoutServiceProvider = Provider<RazorpayCheckoutService>((
   return RazorpayCheckoutService();
 });
 
+enum RazorpayPaymentStatus {
+  success,
+  cancelled,
+  failed,
+  pending,
+}
+
 class RazorpayPaymentResult {
   final bool isSuccess;
+  final RazorpayPaymentStatus status;
   final String? paymentId;
   final String? orderId;
   final String? signature;
@@ -23,17 +34,40 @@ class RazorpayPaymentResult {
     required this.orderId,
     required this.signature,
   }) : isSuccess = true,
+       status = RazorpayPaymentStatus.success,
        errorMessage = null,
        errorCode = null;
 
-  RazorpayPaymentResult.failure({required this.errorMessage, this.errorCode})
-    : isSuccess = false,
-      paymentId = null,
-      orderId = null,
-      signature = null;
+  RazorpayPaymentResult.failure({
+    required this.errorMessage,
+    this.errorCode,
+    RazorpayPaymentStatus? status,
+  }) : isSuccess = false,
+       status = status ?? _inferStatus(errorMessage, errorCode),
+       paymentId = null,
+       orderId = null,
+       signature = null;
+
+  bool get isCancelled => status == RazorpayPaymentStatus.cancelled;
+  bool get isPending => status == RazorpayPaymentStatus.pending;
+
+  static RazorpayPaymentStatus _inferStatus(String? message, int? code) {
+    final msg = (message ?? '').toLowerCase();
+    if (msg.contains('external wallet') || msg.contains('being processed')) {
+      return RazorpayPaymentStatus.pending;
+    }
+    if (code == Razorpay.PAYMENT_CANCELLED ||
+        msg.contains('cancel') ||
+        msg.contains('dismiss')) {
+      return RazorpayPaymentStatus.cancelled;
+    }
+    return RazorpayPaymentStatus.failed;
+  }
 }
 
 class RazorpayCheckoutService {
+  bool _isCheckoutOpen = false;
+
   /// Opens the native Razorpay checkout sheet and waits for payment success/error callback.
   Future<RazorpayPaymentResult> openCheckout({
     required String keyId,
@@ -44,6 +78,14 @@ class RazorpayCheckoutService {
     String? customerEmail,
     String? customerPhone,
   }) async {
+    if (_isCheckoutOpen) {
+      return RazorpayPaymentResult.failure(
+        errorMessage: 'A payment checkout session is already open.',
+        status: RazorpayPaymentStatus.failed,
+      );
+    }
+
+    _isCheckoutOpen = true;
     final completer = Completer<RazorpayPaymentResult>();
     Razorpay? razorpay;
 
@@ -59,13 +101,9 @@ class RazorpayCheckoutService {
         if (!completer.isCompleted) {
           completer.complete(
             RazorpayPaymentResult.success(
-              paymentId:
-                  response.paymentId ??
-                  'pay_${DateTime.now().millisecondsSinceEpoch}',
+              paymentId: response.paymentId,
               orderId: response.orderId ?? orderId,
-              signature:
-                  response.signature ??
-                  'SIG_${DateTime.now().millisecondsSinceEpoch}',
+              signature: response.signature,
             ),
           );
         }
@@ -77,15 +115,21 @@ class RazorpayCheckoutService {
         debugPrint(
           '[RAZORPAY_FAILURE] code=${response.code} message=${response.message}',
         );
-        debugPrint(
-          '[RAZORPAY_ERROR] code=${response.code} message=${response.message}',
-        );
         if (!completer.isCompleted) {
+          final isCancel =
+              response.code == Razorpay.PAYMENT_CANCELLED ||
+              (response.message ?? '').toLowerCase().contains('cancel');
           completer.complete(
             RazorpayPaymentResult.failure(
               errorMessage:
-                  response.message ?? 'Payment was cancelled or failed.',
+                  response.message ??
+                  (isCancel
+                      ? 'Payment was cancelled by user.'
+                      : 'Payment failed. Please try again.'),
               errorCode: response.code,
+              status: isCancel
+                  ? RazorpayPaymentStatus.cancelled
+                  : RazorpayPaymentStatus.failed,
             ),
           );
         }
@@ -97,16 +141,13 @@ class RazorpayCheckoutService {
         debugPrint(
           '[RAZORPAY_EXTERNAL_WALLET] walletName=${response.walletName}',
         );
-        // External wallet payments do not return a Razorpay signature at checkout time.
-        // The subscription will be activated via the Razorpay webhook (payment.captured event)
-        // once the payment is confirmed by the wallet provider.
         if (!completer.isCompleted) {
           completer.complete(
             RazorpayPaymentResult.failure(
               errorMessage:
-                  'External wallet payment is being processed. '
-                  'Your plan will activate automatically once the payment is confirmed.',
-              errorCode: 2, // External wallet code
+                  'External wallet payment (${response.walletName ?? 'wallet'}) is being processed. Your booking/plan will update once confirmed.',
+              errorCode: 2,
+              status: RazorpayPaymentStatus.pending,
             ),
           );
         }
@@ -118,32 +159,37 @@ class RazorpayCheckoutService {
             RazorpayPaymentResult.failure(
               errorMessage:
                   'Payment gateway is not configured. Please contact support.',
+              status: RazorpayPaymentStatus.failed,
             ),
           );
         }
       } else {
-        final options = {
+        final options = <String, dynamic>{
           'key': keyId,
           'amount': amountInPaise,
-          'name': businessName.isNotEmpty ? businessName : 'QB Suite Marketing',
-          'description': 'Subscription - $planName',
+          'name': businessName.isNotEmpty ? businessName : 'QB Suite',
+          'description': planName,
           'order_id': orderId,
+          'timeout': 300,
+          'retry': {'enabled': true, 'max_count': 2},
           'prefill': {
             'contact': customerPhone ?? '',
             'email': customerEmail ?? '',
           },
           'theme': {'color': '#0F172A'},
-          'send_sms_hash': true,
+          if (Platform.isAndroid) 'send_sms_hash': true,
+          if (Platform.isIOS)
+            'external': {
+              'wallets': ['paytm', 'phonepe', 'gpay'],
+            },
         };
 
         debugPrint(
-          '[RAZORPAY_OPEN] orderId=$orderId amount=$amountInPaise keyId=$keyId',
+          '[RAZORPAY_OPEN] platform=${Platform.operatingSystem} orderId=$orderId amount=$amountInPaise',
         );
         razorpay.open(options);
-      } // end else (keyId not empty)
+      }
     } on MissingPluginException catch (e) {
-      // Razorpay native plugin not available (test runner / mock environment).
-      // Do NOT auto-approve with a fake signature — no real payment occurred.
       debugPrint(
         '[RAZORPAY_PLUGIN_MISSING] Razorpay native plugin unavailable: $e',
       );
@@ -151,7 +197,8 @@ class RazorpayCheckoutService {
         completer.complete(
           RazorpayPaymentResult.failure(
             errorMessage:
-                'Payment gateway is not available in this environment.',
+                'Payment gateway plugin is not available on this device.',
+            status: RazorpayPaymentStatus.failed,
           ),
         );
       }
@@ -160,17 +207,48 @@ class RazorpayCheckoutService {
       if (!completer.isCompleted) {
         completer.complete(
           RazorpayPaymentResult.failure(
-            errorMessage: 'Could not open payment gateway: $e',
+            errorMessage: 'Failed to launch payment sheet: $e',
+            status: RazorpayPaymentStatus.failed,
           ),
         );
       }
     }
 
-    final result = await completer.future;
     try {
+      return await completer.future.timeout(
+        const Duration(minutes: 6),
+        onTimeout: () => RazorpayPaymentResult.failure(
+          errorMessage:
+              'Payment session timed out. If amount was debited, check Payment History.',
+          status: RazorpayPaymentStatus.pending,
+        ),
+      );
+    } finally {
       razorpay?.clear();
-    } catch (_) {}
+      _isCheckoutOpen = false;
+    }
+  }
 
-    return result;
+  /// Checks authoritative backend payment status when confirmation is delayed.
+  Future<Map<String, dynamic>?> checkPaymentStatus(
+    Dio dio, {
+    String? orderId,
+    String? paymentId,
+  }) async {
+    try {
+      final response = await dio.get(
+        AppUrl.paymentStatus,
+        queryParameters: {
+          if (orderId != null && orderId.isNotEmpty) 'orderId': orderId,
+          if (paymentId != null && paymentId.isNotEmpty) 'paymentId': paymentId,
+        },
+      );
+      if (response.data is Map<String, dynamic>) {
+        return response.data['data'] as Map<String, dynamic>?;
+      }
+    } catch (e) {
+      debugPrint('[PAYMENT_STATUS_CHECK_ERROR] $e');
+    }
+    return null;
   }
 }

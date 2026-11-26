@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:remixicon/remixicon.dart';
+import 'package:quickboom_crm_customer/core/services/apple_iap_service.dart';
 import 'package:quickboom_crm_customer/core/services/permission_manager.dart';
+import 'package:quickboom_crm_customer/roles/customer/widgets/payment_status_view.dart';
 import 'package:quickboom_crm_customer/core/utils/app_toast.dart';
 import 'package:quickboom_crm_customer/core/theme/app_colors.dart';
 import 'package:quickboom_crm_customer/roles/customer/models/customer_plan_model.dart';
@@ -223,8 +226,64 @@ class _CheckoutBottomSheetState extends ConsumerState<CheckoutBottomSheet> {
           'Offline payment request submitted. Status: PENDING admin approval.',
           title: 'Payment Request Submitted',
         );
+      } else if (Platform.isIOS) {
+        // APPLE IN-APP PURCHASE (STOREKIT 2) FOR DIGITAL SUBSCRIPTIONS ON iOS
+        final iapService = ref.read(appleIapServiceProvider);
+        final productId = AppleIapService.planProductId(
+          widget.plan.code.isNotEmpty ? widget.plan.code : widget.plan.id,
+          _cycle.code,
+        );
+        final iapResult = await iapService.purchaseProduct(
+          productId: productId,
+          purchaseType: 'SUBSCRIPTION',
+          planId: widget.plan.id,
+          billingCycle: _cycle.code,
+        );
+
+        if (!mounted) return;
+
+        if (iapResult.isSuccess) {
+          invalidateCustomersDirectory(ref);
+          refreshAllCustomerSubscriptionData(ref);
+          ref.invalidate(customerOrdersProvider);
+
+          final nav = Navigator.of(context);
+          nav.pop(null);
+          await PaymentStatusView.show(
+            nav.context,
+            state: PaymentUiState.success,
+            title: 'Subscription Activated',
+            message:
+                'Your App Store purchase has been verified and your ${widget.plan.name} plan is now active.',
+            transactionId: iapResult.transactionId,
+            amount: iapResult.amount,
+            timestamp: iapResult.timestamp,
+            paymentMethod: 'Apple In-App Purchase (StoreKit 2)',
+            receiptNumber: iapResult.receiptNumber,
+          );
+        } else {
+          final uiState = iapResult.status == AppleIapStatus.cancelled
+              ? PaymentUiState.cancelled
+              : iapResult.status == AppleIapStatus.pending
+              ? PaymentUiState.pending
+              : PaymentUiState.failed;
+          await PaymentStatusView.show(
+            context,
+            state: uiState,
+            title: uiState == PaymentUiState.cancelled
+                ? 'Purchase Cancelled'
+                : uiState == PaymentUiState.pending
+                ? 'Purchase Pending'
+                : 'Purchase Failed',
+            message:
+                iapResult.message ??
+                'Unable to complete App Store purchase.',
+            transactionId: iapResult.transactionId,
+            paymentMethod: 'Apple In-App Purchase (StoreKit 2)',
+          );
+        }
       } else {
-        // ONLINE RAZORPAY PAYMENT FLOW
+        // ONLINE RAZORPAY PAYMENT FLOW (ANDROID)
         final newOrder = await ref
             .read(customerOrdersProvider.notifier)
             .purchasePlanWithRazorpay(
@@ -1066,7 +1125,9 @@ class _CheckoutBottomSheetState extends ConsumerState<CheckoutBottomSheet> {
                                         ),
                                       ),
                                       Text(
-                                        'Pay securely via UPI, Card, NetBanking (Razorpay)',
+                                        Platform.isIOS
+                                            ? 'Pay securely via Apple In-App Purchase (StoreKit 2)'
+                                            : 'Pay securely via UPI, Card, NetBanking (Razorpay)',
                                         style: GoogleFonts.outfit(
                                           fontSize: 11,
                                           color: AppColors.textSecondary,
