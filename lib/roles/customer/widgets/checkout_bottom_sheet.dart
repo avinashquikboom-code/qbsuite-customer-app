@@ -18,12 +18,14 @@ import 'package:quickboom_crm_customer/roles/customer/viewmodels/current_custome
 class CheckoutBottomSheet extends ConsumerStatefulWidget {
   final SubscriptionPlan plan;
   final SubscriptionBillingCycle initialCycle;
+  final int? proposalId;
   final void Function(CustomerOrder order)? onOrderSuccess;
 
   const CheckoutBottomSheet({
     super.key,
     required this.plan,
     required this.initialCycle,
+    this.proposalId,
     this.onOrderSuccess,
   });
 
@@ -31,6 +33,7 @@ class CheckoutBottomSheet extends ConsumerStatefulWidget {
     required BuildContext context,
     required SubscriptionPlan plan,
     required SubscriptionBillingCycle cycle,
+    int? proposalId,
     void Function(CustomerOrder order)? onOrderSuccess,
   }) {
     return showModalBottomSheet<CustomerOrder>(
@@ -40,6 +43,7 @@ class CheckoutBottomSheet extends ConsumerStatefulWidget {
       builder: (ctx) => CheckoutBottomSheet(
         plan: plan,
         initialCycle: cycle,
+        proposalId: proposalId,
         onOrderSuccess: onOrderSuccess,
       ),
     );
@@ -291,6 +295,7 @@ class _CheckoutBottomSheetState extends ConsumerState<CheckoutBottomSheet> {
               billingCycle: _cycle,
               paymentOption: _paymentOption,
               couponCode: _couponQuote?['couponCode']?.toString(),
+              proposalId: widget.proposalId,
             );
 
         if (!mounted) return;

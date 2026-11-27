@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:quickboom_crm_customer/core/network/api_client.dart';
 import 'package:quickboom_crm_customer/core/network/app_url.dart';
@@ -961,6 +964,7 @@ class CustomerSubscriptionService {
     String paymentOption = 'FULL',
     DateTime? activationDate,
     String? couponCode,
+    int? proposalId,
   }) async {
     // Ensure credentials from secure storage are loaded into memory
     final storedToken = await SecureStorageService.getAccessToken();
@@ -1001,6 +1005,7 @@ class CustomerSubscriptionService {
         'activationDate': formatCalendarDateForApi(activationDate),
       if (couponCode != null && couponCode.trim().isNotEmpty)
         'couponCode': couponCode.trim(),
+      'proposalId': ?proposalId,
     };
 
     debugPrint('==================================================');
@@ -1071,6 +1076,7 @@ class CustomerSubscriptionService {
     String paymentOption = 'FULL',
     DateTime? activationDate,
     String? couponCode,
+    int? proposalId,
   }) async {
     if (_apiClient == null ||
         _apiClient.token == null ||
@@ -1090,6 +1096,7 @@ class CustomerSubscriptionService {
         'activationDate': formatCalendarDateForApi(activationDate),
       if (couponCode != null && couponCode.trim().isNotEmpty)
         'couponCode': couponCode.trim(),
+      'proposalId': ?proposalId,
     };
 
     debugPrint('==================================================');
@@ -1537,5 +1544,38 @@ class CustomerSubscriptionService {
       );
     }
     return [];
+  }
+
+  /// Fetch proposals sent to the authenticated customer
+  Future<List<Map<String, dynamic>>> getCustomerProposals() async {
+    final client = _apiClient;
+    if (client == null) throw Exception('Authentication required.');
+    final response = await client.get(
+      '/customer/proposals',
+      queryParameters: {'_ts': DateTime.now().millisecondsSinceEpoch},
+    );
+    final raw = response.data is Map && (response.data as Map).containsKey('data')
+        ? (response.data as Map)['data']
+        : response.data;
+    if (raw is! List) return [];
+    return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  /// Download and open proposal PDF for the authenticated customer
+  Future<void> downloadAndOpenProposalPdf(int proposalId) async {
+    final client = _apiClient;
+    if (client == null) throw Exception('Authentication required.');
+    final bytes = await client.downloadFileBytes(
+      '/customer/proposals/$proposalId/pdf',
+      documentType: 'PROPOSAL',
+      documentId: proposalId.toString(),
+    );
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/my-proposal-$proposalId.pdf');
+    await file.writeAsBytes(bytes, flush: true);
+    final result = await OpenFilex.open(file.path);
+    if (result.type != ResultType.done) {
+      throw Exception(result.message);
+    }
   }
 }

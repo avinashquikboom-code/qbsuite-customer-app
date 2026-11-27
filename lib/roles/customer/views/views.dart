@@ -2,6 +2,7 @@
 export 'customer_dashboard_view.dart';
 export 'customer_home_view.dart';
 export 'customer_plans_view.dart';
+export 'customer_proposals_view.dart';
 export 'customer_orders_view.dart';
 export 'customer_order_details_view.dart';
 export 'customer_account_view.dart';

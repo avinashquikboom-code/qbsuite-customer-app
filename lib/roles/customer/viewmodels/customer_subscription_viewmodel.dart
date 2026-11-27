@@ -231,6 +231,7 @@ class CustomerOrdersNotifier extends AsyncNotifier<List<CustomerOrder>> {
     String paymentOption = 'FULL',
     String? testPaymentId,
     String? couponCode,
+    int? proposalId,
   }) async {
     final isProcessing = ref.read(checkoutProcessingProvider);
     if (isProcessing) return null; // Idempotency protection
@@ -254,6 +255,7 @@ class CustomerOrdersNotifier extends AsyncNotifier<List<CustomerOrder>> {
         paymentOption: paymentOption,
         activationDate: activationDate,
         couponCode: couponCode,
+        proposalId: proposalId,
       );
 
       final razorpayOrderId = orderRes['orderId']?.toString();
@@ -320,6 +322,7 @@ class CustomerOrdersNotifier extends AsyncNotifier<List<CustomerOrder>> {
         paymentOption: paymentOption,
         activationDate: activationDate,
         couponCode: couponCode,
+        proposalId: proposalId,
       );
 
       CustomerOrder? newOrder = verifyRes['order'] as CustomerOrder?;

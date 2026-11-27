@@ -79,6 +79,7 @@ class CustomerAccountView extends ConsumerWidget {
               ref.invalidate(workProjectsProvider);
               ref.invalidate(leadsProvider);
               ref.invalidate(proposalsProvider);
+              ref.invalidate(customerProposalsProvider);
               ref.invalidate(currentSubscriptionProvider);
               ref.invalidate(customerOrdersProvider);
               ref.invalidate(customerInvoicesProvider);

@@ -88,6 +88,7 @@ class CustomerAppDrawer extends ConsumerWidget {
               ref.invalidate(leadsProvider);
               ref.invalidate(leadStagesProvider);
               ref.invalidate(proposalsProvider);
+              ref.invalidate(customerProposalsProvider);
               ref.invalidate(currentSubscriptionProvider);
               ref.invalidate(customerOrdersProvider);
               ref.invalidate(paymentsProvider);
@@ -153,6 +154,15 @@ class CustomerAppDrawer extends ConsumerWidget {
                         isSelected: currentTabIndex == 0,
                         onTap: () => _selectTab(context, 0),
                       ),
+                    _buildDrawerItem(
+                      icon: Remix.file_text_line,
+                      title: 'My Proposal',
+                      isSelected: false,
+                      onTap: () => _navigateToScreen(
+                        context,
+                        const CustomerProposalsView(),
+                      ),
+                    ),
                     if (perms.customerCan('CUSTOMER_PLANS', 'VIEW'))
                       _buildDrawerItem(
                         icon: Remix.price_tag_3_line,

@@ -1,245 +1,170 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:quickboom_crm_customer/roles/customer/models/customer_plan_model.dart';
 import 'package:quickboom_crm_customer/roles/customer/models/proposal_model.dart';
-import 'package:quickboom_crm_customer/roles/customer/viewmodels/current_customer_viewmodel.dart';
+import 'package:quickboom_crm_customer/roles/customer/services/customer_subscription_service.dart';
 
-final proposalsProvider =
-    NotifierProvider<ProposalsViewModel, List<ProposalModel>>(() {
-      return ProposalsViewModel();
-    });
+class CustomerProposalFeature {
+  final String name;
+  final String quantity;
+  final String description;
 
-class ProposalsViewModel extends Notifier<List<ProposalModel>> {
-  @override
-  List<ProposalModel> build() {
-    final customerNameAsync = ref.watch(currentCustomerNameProvider);
-    final customerName =
-        (customerNameAsync.asData?.value ?? customerNameAsync.value ?? '')
-            .trim()
-            .toLowerCase();
-    if (customerName.isEmpty) return [];
+  const CustomerProposalFeature({
+    required this.name,
+    this.quantity = '',
+    this.description = '',
+  });
 
-    final all = _mockProposals();
-    return all
-        .where((p) => p.customerName.toLowerCase() == customerName)
-        .toList();
+  factory CustomerProposalFeature.fromDynamic(dynamic raw) {
+    if (raw is Map) {
+      return CustomerProposalFeature(
+        name: (raw['name'] ?? '').toString().trim(),
+        quantity: (raw['quantity'] ?? '').toString().trim(),
+        description: (raw['description'] ?? '').toString().trim(),
+      );
+    }
+    return CustomerProposalFeature(name: raw.toString().trim());
   }
 
-  List<ProposalModel> _mockProposals() {
-    return [
-      ProposalModel(
-        id: 'prop-cf-001',
-        proposalNo: 'QB-2026-CF-01',
-        customerId: 'T001',
-        leadId: 'lead-001',
-        customerName: 'Care Fitness Gym',
-        contactPerson: 'Rahul Sharma',
-        mobile: '9820112345',
-        email: 'info@carefitness.com',
-        date: '15 Aug 2026',
-        items: [
-          ProposalItemModel(
-            id: 'pi-cf-001',
-            name: 'Growth Plan (12 Reels, 8 Posts, Meta Ads)',
-            quantity: 1,
-            planType: 'Monthly',
-            unitPrice: 35000,
-          ),
-        ],
-        subtotal: 35000,
-        discount: 0,
-        gstPercent: 18,
-        gstAmount: 6300,
-        netTotal: 41300,
-        status: 'SENT',
-        createdAt: '2026-08-15T10:00:00.000Z',
-      ),
-      ProposalModel(
-        id: 'prop-abc-001',
-        proposalNo: 'QB-2026-ABC-01',
-        customerId: 'T002',
-        leadId: 'lead-002',
-        customerName: 'ABC Fitness',
-        contactPerson: 'Vikram Mehta',
-        mobile: '9820099887',
-        email: 'contact@abcfitness.com',
-        date: '16 Aug 2026',
-        items: [
-          ProposalItemModel(
-            id: 'pi-abc-001',
-            name: 'Pro Package (16 Reels, Drone Shoot)',
-            quantity: 1,
-            planType: 'Monthly',
-            unitPrice: 50000,
-          ),
-        ],
-        subtotal: 50000,
-        discount: 0,
-        gstPercent: 18,
-        gstAmount: 9000,
-        netTotal: 59000,
-        status: 'ACCEPTED',
-        createdAt: '2026-08-16T10:00:00.000Z',
-      ),
-      ProposalModel(
-        id: 'prop-001',
-        proposalNo: 'QB-2026-089',
-        customerId: '',
-        leadId: '',
-        customerName: 'Tata Consultancy Services',
-        contactPerson: 'Rajesh Gopinathan',
-        mobile: '9800000001',
-        email: 'rajesh@tcs.com',
-        date: '16 Aug 2026',
-        items: [
-          ProposalItemModel(
-            id: 'pi-s-001',
-            name: 'Enterprise CRM Cloud Solution',
-            quantity: 1,
-            planType: 'Yearly',
-            unitPrice: 75000,
-          ),
-          ProposalItemModel(
-            id: 'pi-s-002',
-            name: '10 User Seats',
-            quantity: 10,
-            planType: 'Yearly',
-            unitPrice: 1000,
-          ),
-        ],
-        subtotal: 85000,
-        discount: 0,
-        gstPercent: 18,
-        gstAmount: 15300,
-        netTotal: 100300,
-        status: 'SENT',
-        createdAt: '2026-08-16T10:00:00.000Z',
-      ),
-      ProposalModel(
-        id: 'prop-002',
-        proposalNo: 'QB-2026-088',
-        customerId: '',
-        leadId: '',
-        customerName: 'Reliance Digital Retail',
-        contactPerson: 'Mukesh Ambani',
-        mobile: '9800000002',
-        email: 'info@reliance.com',
-        date: '15 Aug 2026',
-        items: [
-          ProposalItemModel(
-            id: 'pi-s-003',
-            name: 'Custom POS Sync Bridge',
-            quantity: 1,
-            planType: 'One-time',
-            unitPrice: 125000,
-          ),
-        ],
-        subtotal: 125000,
-        discount: 0,
-        gstPercent: 18,
-        gstAmount: 22500,
-        netTotal: 147500,
-        status: 'ACCEPTED',
-        createdAt: '2026-08-15T10:00:00.000Z',
-      ),
-      ProposalModel(
-        id: 'prop-003',
-        proposalNo: 'QB-2026-085',
-        customerId: '',
-        leadId: '',
-        customerName: 'Infosys Technologies Hub',
-        contactPerson: 'Salil Parekh',
-        mobile: '9800000003',
-        email: 'salil@infosys.com',
-        date: '12 Aug 2026',
-        items: [
-          ProposalItemModel(
-            id: 'pi-s-004',
-            name: 'Field Workforce GPS Attendance',
-            quantity: 1,
-            planType: 'Yearly',
-            unitPrice: 65000,
-          ),
-        ],
-        subtotal: 65000,
-        discount: 0,
-        gstPercent: 18,
-        gstAmount: 11700,
-        netTotal: 76700,
-        status: 'NEGOTIATION',
-        createdAt: '2026-08-12T10:00:00.000Z',
-      ),
-      ProposalModel(
-        id: 'prop-004',
-        proposalNo: 'QB-2026-081',
-        customerId: '',
-        leadId: '',
-        customerName: 'HCL Enterprise Software',
-        contactPerson: 'Roshni Nadar',
-        mobile: '9800000004',
-        email: 'roshni@hcl.com',
-        date: '10 Aug 2026',
-        items: [
-          ProposalItemModel(
-            id: 'pi-s-005',
-            name: 'Annual Software Maintenance SLA',
-            quantity: 1,
-            planType: 'Yearly',
-            unitPrice: 45000,
-          ),
-        ],
-        subtotal: 45000,
-        discount: 0,
-        gstPercent: 18,
-        gstAmount: 8100,
-        netTotal: 53100,
-        status: 'DRAFT',
-        createdAt: '2026-08-10T10:00:00.000Z',
-      ),
-    ];
-  }
-
-  void addProposal(ProposalModel proposal) {
-    state = [proposal, ...state];
-  }
-
-  void updateProposal(ProposalModel proposal) {
-    state = [
-      for (final p in state)
-        if (p.id == proposal.id) proposal else p,
-    ];
-  }
-
-  void deleteProposal(String id) {
-    state = state.where((p) => p.id != id).toList();
-  }
-
-  void updateStatus(String id, String status) {
-    state = [
-      for (final p in state)
-        if (p.id == id) p.copyWith(status: status) else p,
-    ];
-  }
-
-  void duplicateProposal(ProposalModel prop) {
-    final count = state.length + 1;
-    final newNo = 'QB-2026-${(89 + count).toString().padLeft(3, '0')}';
-    final newId =
-        'prop-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-    final duplicated = prop.copyWith(
-      id: newId,
-      proposalNo: newNo,
-      status: 'DRAFT',
-      createdAt: DateTime.now().toIso8601String(),
-    );
-    state = [duplicated, ...state];
-  }
-
-  String get nextProposalNo {
-    final count = state.length + 1;
-    return 'QB-2026-${(89 + count).toString().padLeft(3, '0')}';
-  }
-
-  List<ProposalModel> filterByStatus(String status) {
-    if (status == 'ALL') return state;
-    return state.where((p) => p.status == status).toList();
+  String get displayLine {
+    final head = quantity.isNotEmpty ? '$quantity × $name' : name;
+    return description.isNotEmpty ? '$head — $description' : head;
   }
 }
+
+class CustomerProposalRecord {
+  final int id;
+  final int leadId;
+  final int customerId;
+  final int version;
+  final String proposalNo;
+  final String proposalType;
+  final String status;
+  final int? planId;
+  final String planName;
+  final String? planCode;
+  final String description;
+  final double agreedPrice;
+  final SubscriptionBillingCycle billingCycle;
+  final double monthlyPrice;
+  final double yearlyPrice;
+  final int? userLimit;
+  final int? leadLimit;
+  final List<CustomerProposalFeature> features;
+  final double discount;
+  final String? validUntil;
+  final String terms;
+  final String proposalDate;
+  final bool alreadyPaid;
+  final double totalPaid;
+  final String createdByName;
+
+  const CustomerProposalRecord({
+    required this.id,
+    required this.leadId,
+    required this.customerId,
+    required this.version,
+    required this.proposalNo,
+    required this.proposalType,
+    required this.status,
+    this.planId,
+    required this.planName,
+    this.planCode,
+    required this.description,
+    required this.agreedPrice,
+    required this.billingCycle,
+    required this.monthlyPrice,
+    required this.yearlyPrice,
+    this.userLimit,
+    this.leadLimit,
+    required this.features,
+    this.discount = 0,
+    this.validUntil,
+    this.terms = '',
+    required this.proposalDate,
+    this.alreadyPaid = false,
+    this.totalPaid = 0,
+    this.createdByName = 'Sales Team',
+  });
+
+  factory CustomerProposalRecord.fromJson(Map<String, dynamic> json) {
+    final rawFeatures = json['features'] is List ? json['features'] as List : [];
+    return CustomerProposalRecord(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      leadId: (json['leadId'] as num?)?.toInt() ?? 0,
+      customerId: (json['customerId'] as num?)?.toInt() ?? 0,
+      version: (json['version'] as num?)?.toInt() ?? 1,
+      proposalNo: (json['proposalNo'] ?? 'PLAN').toString(),
+      proposalType: (json['proposalType'] ?? 'DEFAULT').toString(),
+      status: (json['status'] ?? 'SENT').toString(),
+      planId: (json['planId'] as num?)?.toInt(),
+      planName: (json['planName'] ?? 'Subscription Plan').toString(),
+      planCode: json['planCode']?.toString(),
+      description: (json['description'] ?? '').toString(),
+      agreedPrice: (json['agreedPrice'] as num?)?.toDouble() ?? 0.0,
+      billingCycle: SubscriptionBillingCycle.fromString(
+        json['billingCycle']?.toString(),
+      ),
+      monthlyPrice: (json['monthlyPrice'] as num?)?.toDouble() ?? 0.0,
+      yearlyPrice: (json['yearlyPrice'] as num?)?.toDouble() ?? 0.0,
+      userLimit: (json['userLimit'] as num?)?.toInt(),
+      leadLimit: (json['leadLimit'] as num?)?.toInt(),
+      features: rawFeatures
+          .map(CustomerProposalFeature.fromDynamic)
+          .where((f) => f.name.isNotEmpty)
+          .toList(),
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      validUntil: json['validUntil']?.toString(),
+      terms: (json['terms'] ?? '').toString(),
+      proposalDate: (json['proposalDate'] ?? json['createdAt'] ?? '').toString(),
+      alreadyPaid: json['alreadyPaid'] == true,
+      totalPaid: (json['totalPaid'] as num?)?.toDouble() ?? 0.0,
+      createdByName: (json['createdByName'] ?? 'Sales Team').toString(),
+    );
+  }
+
+  SubscriptionPlan toCheckoutPlan() {
+    return SubscriptionPlan(
+      id: (planId ?? 0).toString(),
+      name: planName,
+      subtitle: description.isNotEmpty ? description : null,
+      code: planCode ?? proposalNo,
+      description: description,
+      monthlyPrice: billingCycle == SubscriptionBillingCycle.monthly
+          ? agreedPrice
+          : monthlyPrice,
+      yearlyPrice: billingCycle == SubscriptionBillingCycle.yearly
+          ? agreedPrice
+          : yearlyPrice,
+      features: features.map((f) => f.displayLine).toList(),
+      userLimit: userLimit ?? 5,
+      leadLimit: leadLimit ?? 500,
+    );
+  }
+}
+
+final customerProposalsProvider =
+    AsyncNotifierProvider<CustomerProposalsViewModel, List<CustomerProposalRecord>>(() {
+      return CustomerProposalsViewModel();
+    });
+
+class CustomerProposalsViewModel
+    extends AsyncNotifier<List<CustomerProposalRecord>> {
+  @override
+  Future<List<CustomerProposalRecord>> build() async {
+    final service = ref.watch(customerSubscriptionServiceProvider);
+    final rows = await service.getCustomerProposals();
+    return rows.map(CustomerProposalRecord.fromJson).toList();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final service = ref.read(customerSubscriptionServiceProvider);
+      final rows = await service.getCustomerProposals();
+      return rows.map(CustomerProposalRecord.fromJson).toList();
+    });
+  }
+}
+
+/// Kept for compatibility with existing invalidation sites (backed by real API, no mock data).
+final proposalsProvider = Provider<List<ProposalModel>>((ref) => const []);
